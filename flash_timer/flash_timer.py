@@ -2,9 +2,29 @@ import numpy as np
 import pandas as pd
 
 
+def get_evolution(filepath):
+    """Get evolution time from .log file
+
+    Return: float
+
+    parameters
+    ----------
+    filepath : str
+        path to .log file
+    """
+    offset = 19  # line offset of evolution from line_0
+    lines = read_log(filepath=filepath)
+    line_0 = get_summary_line(filepath)
+
+    evol = lines[line_0 + offset].split()
+
+    return float(evol[3])
+
+
 def get_summary_line(filepath):
-    """Extract line number of perf summary from .log file
-    Return: pd.DataFrame
+    """Get line number of perf summary from .log file
+
+    Return: int
 
     parameters
     ----------
@@ -12,17 +32,17 @@ def get_summary_line(filepath):
         path to .log file
     """
     lines = read_log(filepath=filepath)
-    n = None
+    line_0 = None
 
     for i, line in enumerate(lines):
         if line == ' perf_summary: code performance summary statistics':
-            n = i
+            line_0 = i
             break
 
-    if n is None:
+    if line_0 is None:
         print(f'No summary found in log file: {filepath}')
-        
-    return n
+
+    return line_0
 
 
 def read_log(filepath):
