@@ -1,17 +1,40 @@
 from . import flash_timer
+from . import paths
 
 
 class Model:
     """A single FLASH model
     """
     def __init__(self,
-                 filepath):
+                 model_set,
+                 leaf_blocks,
+                 omp_threads,
+                 mpi_ranks,
+                 log_filepath=None):
         """
 
         parameters
         ----------
-        filepath: str
-            path to log file
+        model_set : str
+            name of model set/collection
+        leaf_blocks : int
+            total no. leaf blocks
+        omp_threads : int
+            no. OpenMP threads used
+        mpi_ranks : int
+            no. MPI ranks used
+        log_filepath : str
+            path to .log file (optional)
         """
-        self.filepath = filepath
-        self.table = flash_timer.extract_table(filepath=filepath)
+        if log_filepath is None:
+            log_filepath = paths.log_filepath(model_set=model_set,
+                                              leaf_blocks=leaf_blocks,
+                                              omp_threads=omp_threads,
+                                              mpi_ranks=mpi_ranks)
+
+        self.log_filepath = log_filepath
+        self.model_set = model_set
+        self.leaf_blocks = leaf_blocks
+        self.omp_threads = omp_threads
+        self.mpi_ranks = mpi_ranks
+        self.table = flash_timer.extract_table(filepath=self.log_filepath)

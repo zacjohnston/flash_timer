@@ -10,14 +10,16 @@ $FLASH_MODELS
 └───<model_set>
 |   |
 |   └───<model>
-|   │   │   <run>.dat
-|   │   │   <run>.log
+|   │   │   <model>.dat
+|   │   │   <model>.log
 |   │   │   ...
 |   │   │
 |   │   └───output
-|   │       │   <run>_hdf5_chk_0000
-|   │       │   <run>_hdf5_chk_0001
+|   │       │   <model>_hdf5_chk_0000
+|   │       │   <model>_hdf5_chk_0001
 |   │       │   ...
+
+where: model="{model_set}_{leaf_blocks}_{omp_threads}_{mpi_ranks}"
 """
 
 import os
