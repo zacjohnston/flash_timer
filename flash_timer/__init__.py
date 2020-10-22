@@ -1,3 +1,3 @@
-from . import flash_timer
+from . import logfile
 from . import model
 from . import paths

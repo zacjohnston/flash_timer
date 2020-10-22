@@ -1,4 +1,4 @@
-from . import flash_timer
+from . import logfile
 from . import paths
 
 
@@ -37,4 +37,4 @@ class Model:
         self.leaf_blocks = leaf_blocks
         self.omp_threads = omp_threads
         self.mpi_ranks = mpi_ranks
-        self.table = flash_timer.extract_table(filepath=self.log_filepath)
+        self.table = logfile.extract_table(filepath=self.log_filepath)
