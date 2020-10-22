@@ -13,14 +13,12 @@ def extract_table(filepath, loglines=None):
         path to .log file
     loglines : [str]
     """
-    table_line = get_table_line(filepath=filepath, loglines=loglines)
+    table_start, table_end = get_table_lines(filepath=filepath, loglines=loglines)
 
-    table = pd.read_csv(filepath, skiprows=table_line, skipfooter=2,
+    table = pd.read_csv(filepath, skiprows=table_start,
                         header=None, sep=r"[ ]{2,}", engine='python',
-                        names=['unit', 'max', 'min', 'avg', 'calls'])
-
-    table.set_index('unit', inplace=True)
-    # table = table.transpose()
+                        names=['unit', 'max', 'min', 'avg', 'calls'],
+                        index_col='unit', nrows=table_end-table_start)
 
     return table
 
@@ -45,9 +43,9 @@ def get_evolution(filepath=None, loglines=None, offset=19):
     return float(evol[3])
 
 
-def get_table_line(filepath=None, loglines=None):
-    """Get line number of perf summary table from .log file
-    Note: Finds first row containing 'initialization'
+def get_table_lines(filepath=None, loglines=None):
+    """Get start/end line numbers of perf summary table from .log file
+    Note: Assumes first table row contains 'initialization'
 
     Return: int
 
@@ -60,14 +58,20 @@ def get_table_line(filepath=None, loglines=None):
     loglines = check_loglines(filepath=filepath, loglines=loglines)
     summary_line = get_summary_line(loglines=loglines)
 
-    table_offset = []
+    start_offset = None
+    end_offset = None
 
-    for i, line in enumerate(loglines[summary_line:]):
-        if 'initialization' in line:
-            table_offset = i
+    for i, line in enumerate(loglines[summary_line:summary_line+200]):
+        if (start_offset is None) and ('initialization' in line):
+            start_offset = i
+        elif '==============' in line:
+            end_offset = i
             break
 
-    return summary_line + table_offset
+    table_start = summary_line + start_offset
+    table_end = summary_line + end_offset
+
+    return table_start, table_end
 
 
 def get_summary_line(filepath=None, loglines=None):
