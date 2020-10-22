@@ -2,8 +2,7 @@ import numpy as np
 import pandas as pd
 
 
-def extract_table(filepath, loglines=None,
-                  table_offset=8):
+def extract_table(filepath, loglines=None):
     """Get perf timing table from .log file
 
     Return: pd.DataFrame
@@ -13,19 +12,15 @@ def extract_table(filepath, loglines=None,
     filepath : str
         path to .log file
     loglines : [str]
-    table_offset : int
-        offset (lines) of performance table from summary line
     """
-    summary_line = get_summary_line(filepath=filepath, loglines=loglines)
+    table_line = get_table_line(filepath=filepath, loglines=loglines)
 
-    table = pd.read_csv(filepath, skiprows=summary_line + table_offset,
-                        skipfooter=2, header=None,
-                        sep=r"[ ]{2,}", engine='python')
+    table = pd.read_csv(filepath, skiprows=table_line, skipfooter=2,
+                        header=None, sep=r"[ ]{2,}", engine='python',
+                        names=['unit', 'max', 'min', 'avg', 'calls'])
 
-    table.set_index(0, inplace=True)
+    table.set_index('unit', inplace=True)
     # table = table.transpose()
-    table.columns = ['max', 'min', 'avg', 'calls']
-    table.index.rename('unit', inplace=True)
 
     return table
 
