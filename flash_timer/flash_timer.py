@@ -50,6 +50,31 @@ def get_evolution(filepath=None, loglines=None, offset=19):
     return float(evol[3])
 
 
+def get_table_line(filepath=None, loglines=None):
+    """Get line number of perf summary table from .log file
+    Note: Finds first row containing 'initialization'
+
+    Return: int
+
+    parameters
+    ----------
+    filepath : str
+        path to .log file
+    loglines: [str]
+    """
+    loglines = check_loglines(filepath=filepath, loglines=loglines)
+    summary_line = get_summary_line(loglines=loglines)
+
+    table_offset = []
+
+    for i, line in enumerate(loglines[summary_line:]):
+        if 'initialization' in line:
+            table_offset = i
+            break
+
+    return summary_line + table_offset
+
+
 def get_summary_line(filepath=None, loglines=None):
     """Get line number of perf summary from .log file
 
@@ -62,20 +87,20 @@ def get_summary_line(filepath=None, loglines=None):
     loglines: [str]
     """
     loglines = check_loglines(filepath=filepath, loglines=loglines)
-    line_0 = []
+    summary_line = []
 
     for i, line in enumerate(loglines):
         if line == ' perf_summary: code performance summary statistics':
-            line_0 += [i]
+            summary_line += [i]
 
-    if len(line_0) is 0:
+    if len(summary_line) is 0:
         print(f'No performance summary found in log file: {filepath}')
         return None
-    elif len(line_0) > 1:
+    elif len(summary_line) > 1:
         print(f'WARNING: multiple runs found in log file. Returning most recent only')
-        return line_0[-1]
+        return summary_line[-1]
     else:
-        return line_0[0]
+        return summary_line[0]
 
 
 def check_loglines(filepath, loglines):
