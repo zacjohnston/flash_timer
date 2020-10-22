@@ -44,17 +44,19 @@ def model_path(model, model_set):
     return os.path.join(flash_models_path, model_set, model)
 
 
-def log_filepath(run, model, model_set):
+def log_filepath(model_set, leaf_blocks, mpi_ranks, omp_threads):
     """Return filepath to FLASH .log file
 
     Parameters
     ----------
-    run : str
-    model : str
     model_set : str
+    leaf_blocks : int
+    mpi_ranks : int
+    omp_threads : int
     """
-    path = model_path(model, model_set=model_set)
-    filename = f'{run}.log'
+    model = f'{model_set}_{leaf_blocks}_{omp_threads}_{mpi_ranks}'
+    path = model_path(model=model, model_set=model_set)
+    filename = f'sod_amd_{leaf_blocks}.log'
 
     return os.path.join(path, filename)
 
