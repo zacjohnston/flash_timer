@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 
-def extract_table(filepath):
+def extract_table(filepath, loglines=None,
+                  table_offset=8):
     """Get perf timing table from .log file
 
     Return: pd.DataFrame
@@ -11,12 +12,15 @@ def extract_table(filepath):
     ----------
     filepath : str
         path to .log file
+    loglines : [str]
+    table_offset : int
+        offset (lines) of performance table from summary line
     """
-    offset = 19  # line offset of evolution from line_0
-    line_0 = get_summary_line(filepath)
+    summary_line = get_summary_line(filepath=filepath, loglines=loglines)
 
-    table = pd.read_csv(filepath, skiprows=line_0+offset, skipfooter=2,
-                        header=None, sep=r"[ ]{2,}", engine='python')
+    table = pd.read_csv(filepath, skiprows=summary_line + table_offset,
+                        skipfooter=2, header=None,
+                        sep=r"[ ]{2,}", engine='python')
 
     table.set_index(0, inplace=True)
     # table = table.transpose()
@@ -26,7 +30,7 @@ def extract_table(filepath):
     return table
 
 
-def get_evolution(filepath):
+def get_evolution(filepath=None, loglines=None, offset=19):
     """Get evolution time (avg/proc) from .log file
 
     Return: float
@@ -35,12 +39,13 @@ def get_evolution(filepath):
     ----------
     filepath : str
         path to .log file
+    loglines : [str]
+    offset : int
+        offset (lines) of evolution row from summary line
     """
-    offset = 19  # line offset of evolution from line_0
-    lines = read_loglines(filepath=filepath)
-    line_0 = get_summary_line(filepath)
-
-    evol = lines[line_0 + offset].split()
+    loglines = check_loglines(filepath=filepath, loglines=loglines)
+    summary_line = get_summary_line(loglines=loglines)
+    evol = loglines[summary_line + offset].split()
 
     return float(evol[3])
 
@@ -55,13 +60,8 @@ def get_summary_line(filepath=None, loglines=None):
     filepath : str
         path to .log file
     loglines: [str]
-
     """
-    if loglines is None:
-        if filepath is None:
-            raise ValueError('Must provide either filepath or lines')
-        loglines = read_loglines(filepath=filepath)
-
+    loglines = check_loglines(filepath=filepath, loglines=loglines)
     line_0 = []
 
     for i, line in enumerate(loglines):
@@ -78,7 +78,18 @@ def get_summary_line(filepath=None, loglines=None):
         return line_0[0]
 
 
-def read_loglines(filepath):
+def check_loglines(filepath, loglines):
+    """Check if loglines provided, otherwise load from file
+    """
+    if loglines is None:
+        if filepath is None:
+            raise ValueError('Must provide either filepath or loglines')
+        loglines = load_loglines(filepath=filepath)
+
+    return loglines
+
+
+def load_loglines(filepath):
     """Load .log file as list of lines
 
     Return: [str]
