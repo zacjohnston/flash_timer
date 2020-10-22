@@ -27,7 +27,7 @@ def extract_table(filepath):
 
 
 def get_evolution(filepath):
-    """Get evolution time from .log file
+    """Get evolution time (avg/proc) from .log file
 
     Return: float
 
@@ -37,7 +37,7 @@ def get_evolution(filepath):
         path to .log file
     """
     offset = 19  # line offset of evolution from line_0
-    lines = read_log(filepath=filepath)
+    lines = read_loglines(filepath=filepath)
     line_0 = get_summary_line(filepath)
 
     evol = lines[line_0 + offset].split()
@@ -45,7 +45,7 @@ def get_evolution(filepath):
     return float(evol[3])
 
 
-def get_summary_line(filepath):
+def get_summary_line(filepath=None, loglines=None):
     """Get line number of perf summary from .log file
 
     Return: int
@@ -54,11 +54,17 @@ def get_summary_line(filepath):
     ----------
     filepath : str
         path to .log file
+    loglines: [str]
+
     """
-    lines = read_log(filepath=filepath)
+    if loglines is None:
+        if filepath is None:
+            raise ValueError('Must provide either filepath or lines')
+        loglines = read_loglines(filepath=filepath)
+
     line_0 = []
 
-    for i, line in enumerate(lines):
+    for i, line in enumerate(loglines):
         if line == ' perf_summary: code performance summary statistics':
             line_0 += [i]
 
@@ -72,7 +78,7 @@ def get_summary_line(filepath):
         return line_0[0]
 
 
-def read_log(filepath):
+def read_loglines(filepath):
     """Load .log file as list of lines
 
     Return: [str]
@@ -83,6 +89,6 @@ def read_log(filepath):
         path to .log file
     """
     with open(filepath, 'r') as f:
-        lines = f.read().splitlines()
+        loglines = f.read().splitlines()
 
-    return lines
+    return loglines
