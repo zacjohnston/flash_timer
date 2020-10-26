@@ -7,8 +7,8 @@ class Model:
     """
     def __init__(self,
                  model_set,
-                 leaf_blocks,
                  omp_threads,
+                 leaf_blocks,
                  mpi_ranks,
                  log_filepath=None):
         """
@@ -34,7 +34,7 @@ class Model:
 
         self.log_filepath = log_filepath
         self.model_set = model_set
-        self.leaf_blocks = leaf_blocks
         self.omp_threads = omp_threads
+        self.leaf_blocks = leaf_blocks
         self.mpi_ranks = mpi_ranks
         self.table = logfile.extract_table(filepath=self.log_filepath)

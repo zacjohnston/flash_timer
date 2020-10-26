@@ -10,16 +10,17 @@ $FLASH_MODELS
 └───<model_set>
 |   |
 |   └───<model>
-|   │   │   <model>.dat
-|   │   │   <model>.log
+|   │   │   <run>.dat
+|   │   │   <run>.log
 |   │   │   ...
 |   │   │
 |   │   └───output
-|   │       │   <model>_hdf5_chk_0000
-|   │       │   <model>_hdf5_chk_0001
+|   │       │   <run>_hdf5_chk_0000
+|   │       │   <run>_hdf5_chk_0001
 |   │       │   ...
 
-where: model="{model_set}_{leaf_blocks}_{omp_threads}_{mpi_ranks}"
+where: model="{model_set}_{omp_threads}_{leaf_blocks}_{mpi_ranks}"
+       run="{model_set}_{leaf_blocks}"
 """
 
 import os
@@ -56,9 +57,9 @@ def log_filepath(model_set, leaf_blocks, mpi_ranks, omp_threads):
     mpi_ranks : int
     omp_threads : int
     """
-    model = f'{model_set}_{leaf_blocks}_{omp_threads}_{mpi_ranks}'
+    model = f'{model_set}_{omp_threads}_{leaf_blocks}_{mpi_ranks}'
     path = model_path(model=model, model_set=model_set)
-    filename = f'sod_amd_{leaf_blocks}.log'
+    filename = f'{model_set}_{leaf_blocks}.log'
 
     return os.path.join(path, filename)
 

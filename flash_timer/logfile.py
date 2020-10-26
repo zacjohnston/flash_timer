@@ -1,4 +1,6 @@
-import numpy as np
+"""
+
+"""
 import pandas as pd
 
 
@@ -89,7 +91,8 @@ def get_summary_line(filepath=None, loglines=None):
     summary_line = []
 
     for i, line in enumerate(loglines):
-        if line == ' perf_summary: code performance summary statistics':
+        # if line == ' perf_summary: code performance summary statistics':
+        if ' perf_summary: code performance summary for process' in line:
             summary_line += [i]
 
     if len(summary_line) is 0:
