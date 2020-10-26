@@ -1,3 +1,4 @@
-from . import logfile
+from . import model_set
 from . import model
+from . import logfile
 from . import paths
