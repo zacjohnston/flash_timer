@@ -10,9 +10,9 @@ class Model:
                  omp_threads,
                  leaf_blocks,
                  mpi_ranks,
-                 log_filepath=None):
+                 log_filepath=None,
+                 log_basename='sod3d'):
         """
-
         parameters
         ----------
         model_set : str
@@ -30,7 +30,8 @@ class Model:
             log_filepath = paths.log_filepath(model_set=model_set,
                                               leaf_blocks=leaf_blocks,
                                               omp_threads=omp_threads,
-                                              mpi_ranks=mpi_ranks)
+                                              mpi_ranks=mpi_ranks,
+                                              basename=log_basename)
 
         self.log_filepath = log_filepath
         self.model_set = model_set

@@ -47,7 +47,8 @@ def model_path(model, model_set):
     return os.path.join(flash_models_path, model_set, model)
 
 
-def log_filepath(model_set, leaf_blocks, mpi_ranks, omp_threads):
+def log_filepath(model_set, leaf_blocks, mpi_ranks, omp_threads,
+                 basename='sod3d'):
     """Return filepath to FLASH .log file
 
     Parameters
@@ -56,10 +57,11 @@ def log_filepath(model_set, leaf_blocks, mpi_ranks, omp_threads):
     leaf_blocks : int
     mpi_ranks : int
     omp_threads : int
+    basename : str
     """
     model = f'{model_set}_{omp_threads}_{leaf_blocks}_{mpi_ranks}'
     path = model_path(model=model, model_set=model_set)
-    filename = f'{model_set}_{leaf_blocks}.log'
+    filename = f'{basename}_{leaf_blocks}.log'
 
     return os.path.join(path, filename)
 
