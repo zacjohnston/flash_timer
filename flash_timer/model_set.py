@@ -77,10 +77,8 @@ class ModelSet:
         last_rank = self.mpi_ranks[-1]
         ax.plot([0, last_rank], [0, last_rank], ls='--', color='black')
 
-        ax.legend(title='Leaf blocks')
-        ax.set_xlabel('MPI ranks')
-        ax.set_ylabel('Speedup')
-        ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+        self._set_ax(ax=ax, omp_threads=omp_threads, x_label='MPI ranks',
+                     y_label='Speedup')
 
     def plot_strong_time(self, omp_threads, unit='evolution'):
         """Plot scaling
@@ -92,11 +90,15 @@ class ModelSet:
                                    leaf_blocks=leafs)
             ax.plot(self.mpi_ranks, times, marker='o', label=leafs)
 
+        self._set_ax(ax=ax, omp_threads=omp_threads, x_label='MPI ranks',
+                     y_label='Time (s)')
+
+    def _set_ax(self, ax, omp_threads, x_label, y_label):
+        """Set axis properties
+        """
         ax.legend(title='Leaf blocks')
-        ax.set_xlabel('MPI ranks')
-        ax.set_ylabel('Time (s)')
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
         ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
-
-
 
 
