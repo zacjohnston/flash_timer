@@ -13,8 +13,9 @@ class ModelSet:
                  model_set,
                  omp_threads,
                  leaf_blocks,
-                 mpi_ranks,
-                 log_basename='sod3d'):
+                 mpi_ranks=None,
+                 log_basename='sod3d',
+                 max_cores=128):
         """
 
         parameters
@@ -29,12 +30,15 @@ class ModelSet:
             list of MPI ranks used
         log_basename : str
             Prefix used in logfile name, e.g. 'sod3d' for 'sod3d_16.log`
+        max_cores : int
+            maximum cores available
         """
         self.model_set = model_set
 
         self.omp_threads = omp_threads
         self.leaf_blocks = leaf_blocks
         self.mpi_ranks = mpi_ranks
+        self.max_cores = max_cores
         self.expand_sequences()
 
         self.models = {}
@@ -49,12 +53,19 @@ class ModelSet:
                                                         mpi_ranks=ranks,
                                                         log_basename=log_basename)
 
+    # =======================================================
+    #                      Load/analysis
+    # =======================================================
     def expand_sequences(self):
         """Expand sequence attributes
         """
         self.leaf_blocks = tools.ensure_sequence(self.leaf_blocks)
 
-        if not isinstance(self.mpi_ranks, (list, tuple, np.ndarray)):
+        if self.mpi_ranks is None:
+            largest_rank = int(self.max_cores / self.omp_threads)
+            self.mpi_ranks = tools.expand_power_sequence(largest=largest_rank)
+
+        elif isinstance(self.mpi_ranks, int):
             self.mpi_ranks = tools.expand_power_sequence(largest=self.mpi_ranks)
 
     def get_times(self, unit, leaf_blocks):
@@ -70,6 +81,9 @@ class ModelSet:
 
         return np.array(times)
 
+    # =======================================================
+    #                      Plotting
+    # =======================================================
     def plot_strong_speedup(self, unit='evolution'):
         """Plot scaling
         """
