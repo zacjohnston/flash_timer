@@ -62,7 +62,10 @@ class ModelSet:
         self.leaf_blocks = tools.ensure_sequence(self.leaf_blocks)
 
         if self.mpi_ranks is None:
-            largest_rank = int(self.max_cores / self.omp_threads)
+            max_ranks = int(self.max_cores / self.omp_threads)
+            max_leaf_blocks = max(self.leaf_blocks)
+
+            largest_rank = min(max_ranks, max_leaf_blocks)
             self.mpi_ranks = tools.expand_power_sequence(largest=largest_rank)
 
         elif isinstance(self.mpi_ranks, int):
