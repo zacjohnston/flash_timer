@@ -20,6 +20,7 @@ def extract_table(filepath, loglines=None):
     table = pd.read_csv(filepath, skiprows=table_start,
                         header=None, sep=r"[ ]{2,}", engine='python',
                         names=['unit', 'max', 'min', 'avg', 'calls'],
+                        # names=['unit', 'tot', 'calls', 'avg', 'pct'],
                         index_col='unit', nrows=table_end-table_start)
 
     return table
@@ -91,8 +92,8 @@ def get_summary_line(filepath=None, loglines=None):
     summary_line = []
 
     for i, line in enumerate(loglines):
-        # if line == ' perf_summary: code performance summary statistics':
-        if ' perf_summary: code performance summary for process' in line:
+        # if ' perf_summary: code performance summary for process' in line:
+        if line == ' perf_summary: code performance summary statistics':
             summary_line += [i]
 
     if len(summary_line) is 0:

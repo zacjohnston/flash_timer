@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import ScalarFormatter
 
 # flash_timer
 from . import model
@@ -77,9 +78,12 @@ class ModelSet:
         times = []
         models = self.models[leaf_blocks]
 
-        for i, m in models.items():
-            t = m.table.loc[unit, 'avg']
-            # t = m.table.loc[unit, 'avg'][1]
+        for ranks, m in models.items():
+            print(leaf_blocks, ranks)
+            t = float(m.table.loc[unit, 'avg'])
+            # t = float(m.table.loc[unit, 'avg'][1])
+            # t = float(m.table.loc[unit, 'tot'])
+            # t = float(m.table.loc[unit, 'tot'][1])
             times += [t]
 
         return np.array(times)
@@ -87,37 +91,59 @@ class ModelSet:
     # =======================================================
     #                      Plotting
     # =======================================================
-    def plot_strong_speedup(self, unit='evolution'):
+    def plot_strong_speedup(self, unit='evolution', log=False):
         """Plot scaling
         """
         fig, ax = plt.subplots()
+        # x = self.mpi_ranks*self.omp_threads
+        x = self.mpi_ranks
 
         for leafs in self.leaf_blocks:
             times = self.get_times(unit=unit, leaf_blocks=leafs)
-            ax.plot(self.mpi_ranks, times[0]/times, marker='o', label=leafs)
+            ax.plot(x, times[0]/times, marker='o', label=leafs)
 
-        last_rank = self.mpi_ranks[-1]
-        ax.plot([0, last_rank], [0, last_rank], ls='--', color='black')
+        last_rank = x[-1]
+        ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
-        self._set_ax(ax=ax, x_label='MPI ranks', y_label='Speedup')
+        # self._set_ax(ax=ax, x_label='MPI ranks', y_label='Speedup')
+        self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Speedup',
+                     log=log, yticks=True)
+
+        return fig
 
     def plot_strong_time(self, unit='evolution'):
         """Plot scaling
         """
         fig, ax = plt.subplots()
+        x = self.mpi_ranks
 
         for leafs in self.leaf_blocks:
             times = self.get_times(unit=unit, leaf_blocks=leafs)
-            ax.plot(self.mpi_ranks, times, marker='o', label=leafs)
+            ax.plot(x, times, marker='o', label=leafs)
 
-        self._set_ax(ax=ax, x_label='MPI ranks', y_label='Time (s)')
+        # self._set_ax(ax=ax, x_label='MPI ranks', y_label='Time (s)')
+        self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Time (s)')
 
-    def _set_ax(self, ax, x_label, y_label):
+        return fig
+
+    def _set_ax(self, ax, x, x_label, y_label, yticks=False, log=False):
         """Set axis properties
         """
         ax.legend(title='Leaf blocks')
         ax.set_xlabel(x_label)
         ax.set_ylabel(y_label)
         ax.set_title(f'{self.model_set}, OMP_THREADS={self.omp_threads}')
+
+        if log:
+            ax.loglog()
+            ax.xaxis.set_major_formatter(ScalarFormatter())
+            ax.yaxis.set_major_formatter(ScalarFormatter())
+            ax.minorticks_off()
+
+        ax.set_xticks(x)
+
+        if yticks:
+            ax.set_yticks(x)
+
 
 
