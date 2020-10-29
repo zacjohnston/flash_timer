@@ -139,7 +139,6 @@ class ModelSetWeak:
             ax.set_yscale(y_scale)
 
         ax.xaxis.set_major_formatter(ScalarFormatter())
-        # ax.yaxis.set_major_formatter(ScalarFormatter())
         ax.set_xticks(x)
         ax.tick_params(axis='x', which='minor', bottom=False)
 

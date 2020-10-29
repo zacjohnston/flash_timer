@@ -79,7 +79,6 @@ class ModelSetStrong:
         models = self.models[leaf_blocks]
 
         for ranks, m in models.items():
-            print(leaf_blocks, ranks)
             t = float(m.table.loc[unit, 'avg'])
             # t = float(m.table.loc[unit, 'avg'][1])
             # t = float(m.table.loc[unit, 'tot'])
@@ -99,10 +98,30 @@ class ModelSetStrong:
 
         for leafs in self.leaf_blocks:
             times = self.get_times(unit=unit, leaf_blocks=leafs)
-            ax.plot(x, times[0]/times, marker='o', label=leafs)
+            y = times[0] / times
+            ax.plot(x, y, marker='o', label=leafs)
 
         last_rank = x[-1]
         ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
+
+        self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Speedup',
+                     x_scale=x_scale, y_scale=y_scale)
+
+        return fig
+
+    def plot_efficiency(self, unit='evolution', x_scale='log', y_scale='linear'):
+        """Plot strong scaling speedup
+        """
+        fig, ax = plt.subplots()
+        x = self.mpi_ranks
+
+        for leafs in self.leaf_blocks:
+            times = self.get_times(unit=unit, leaf_blocks=leafs)
+            y = 100 * times[0] / (self.mpi_ranks * times)
+            ax.plot(x, y, marker='o', label=leafs)
+
+        last_rank = x[-1]
+        ax.plot([1, last_rank], [100, 100], ls='--', color='black')
 
         self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Speedup',
                      x_scale=x_scale, y_scale=y_scale)

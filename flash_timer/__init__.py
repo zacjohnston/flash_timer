@@ -1,4 +1,4 @@
-from . import model_set
+from . import model_set_strong
 from . import model_set_weak
 from . import model
 from . import logfile
