@@ -7,8 +7,8 @@ from . import model
 from . import tools
 
 
-class ModelSet:
-    """A collection of FLASH models
+class ModelSetStrong:
+    """A collection of strong-scaling FLASH models
     """
     def __init__(self,
                  model_set,
@@ -32,7 +32,7 @@ class ModelSet:
         log_basename : str
             Prefix used in logfile name, e.g. 'sod3d' for 'sod3d_16.log`
         max_cores : int
-            maximum cores available
+            maximum cores available on node
         """
         self.model_set = model_set
 
@@ -91,11 +91,10 @@ class ModelSet:
     # =======================================================
     #                      Plotting
     # =======================================================
-    def plot_strong_speedup(self, unit='evolution', log=False):
-        """Plot scaling
+    def plot_speedup(self, unit='evolution', x_scale='linear', y_scale='linear'):
+        """Plot strong scaling speedup
         """
         fig, ax = plt.subplots()
-        # x = self.mpi_ranks*self.omp_threads
         x = self.mpi_ranks
 
         for leafs in self.leaf_blocks:
@@ -105,14 +104,13 @@ class ModelSet:
         last_rank = x[-1]
         ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
-        # self._set_ax(ax=ax, x_label='MPI ranks', y_label='Speedup')
         self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Speedup',
-                     log=log, yticks=True)
+                     x_scale=x_scale, y_scale=y_scale)
 
         return fig
 
-    def plot_strong_time(self, unit='evolution'):
-        """Plot scaling
+    def plot_times(self, unit='evolution', x_scale='log', y_scale='linear'):
+        """Plot strong-scaling runtimes
         """
         fig, ax = plt.subplots()
         x = self.mpi_ranks
@@ -121,12 +119,13 @@ class ModelSet:
             times = self.get_times(unit=unit, leaf_blocks=leafs)
             ax.plot(x, times, marker='o', label=leafs)
 
-        # self._set_ax(ax=ax, x_label='MPI ranks', y_label='Time (s)')
-        self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Time (s)')
+        self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Time (s)',
+                     x_scale=x_scale, y_scale=y_scale)
 
         return fig
 
-    def _set_ax(self, ax, x, x_label, y_label, yticks=False, log=False):
+    def _set_ax(self, ax, x, x_label, y_label,
+                x_scale=None, y_scale=None):
         """Set axis properties
         """
         ax.legend(title='Leaf blocks')
@@ -134,16 +133,16 @@ class ModelSet:
         ax.set_ylabel(y_label)
         ax.set_title(f'{self.model_set}, OMP_THREADS={self.omp_threads}')
 
-        if log:
-            ax.loglog()
+        if x_scale == 'log':
+            ax.set_xscale(x_scale)
             ax.xaxis.set_major_formatter(ScalarFormatter())
+        if y_scale == 'log':
+            ax.set_yscale(y_scale)
             ax.yaxis.set_major_formatter(ScalarFormatter())
-            ax.minorticks_off()
+            ax.set_yticks(x)
+            ax.tick_params(axis='y', which='minor', left=False)
 
         ax.set_xticks(x)
-
-        if yticks:
-            ax.set_yticks(x)
-
+        ax.tick_params(axis='x', which='minor', bottom=False)
 
 
