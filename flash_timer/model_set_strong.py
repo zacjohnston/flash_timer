@@ -13,10 +13,11 @@ class ModelSetStrong:
     def __init__(self,
                  model_set,
                  omp_threads,
-                 leaf_blocks,
+                 leaf_blocks=None,
                  mpi_ranks=None,
                  log_basename='sod3d',
-                 max_cores=128):
+                 max_cores=128,
+                 leaf_blocks_per_max_ranks=(2, 4, 8)):
         """
 
         parameters
@@ -33,16 +34,18 @@ class ModelSetStrong:
             Prefix used in logfile name, e.g. 'sod3d' for 'sod3d_16.log`
         max_cores : int
             maximum cores available on node
+        leaf_blocks_per_max_ranks : [int]
+            number of leaf blocks per maximum rank number
         """
         self.model_set = model_set
-
         self.omp_threads = omp_threads
         self.leaf_blocks = leaf_blocks
         self.mpi_ranks = mpi_ranks
         self.max_cores = max_cores
-        self.expand_sequences()
-
+        self.leaf_blocks_per_max_ranks = leaf_blocks_per_max_ranks
         self.models = {}
+
+        self.expand_sequences()
 
         for leafs in self.leaf_blocks:
             self.models[leafs] = {}
@@ -60,17 +63,17 @@ class ModelSetStrong:
     def expand_sequences(self):
         """Expand sequence attributes
         """
-        self.leaf_blocks = tools.ensure_sequence(self.leaf_blocks)
+        max_ranks = int(self.max_cores / self.omp_threads)
 
         if self.mpi_ranks is None:
-            max_ranks = int(self.max_cores / self.omp_threads)
-            max_leaf_blocks = max(self.leaf_blocks)
-
-            largest_rank = min(max_ranks, max_leaf_blocks)
-            self.mpi_ranks = tools.expand_power_sequence(largest=largest_rank)
-
+            self.mpi_ranks = tools.expand_power_sequence(largest=max_ranks)
         elif isinstance(self.mpi_ranks, int):
             self.mpi_ranks = tools.expand_power_sequence(largest=self.mpi_ranks)
+
+        if self.leaf_blocks is None:
+            self.leaf_blocks = max_ranks * np.array(self.leaf_blocks_per_max_ranks)
+        else:
+            self.leaf_blocks = tools.ensure_sequence(self.leaf_blocks)
 
     def get_times(self, unit, leaf_blocks):
         """Return array of times versus mpi_ranks
@@ -123,7 +126,7 @@ class ModelSetStrong:
         last_rank = x[-1]
         ax.plot([1, last_rank], [100, 100], ls='--', color='black')
 
-        self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Speedup',
+        self._set_ax(ax=ax, x=x, x_label='MPI Ranks', y_label='Efficiency (%)',
                      x_scale=x_scale, y_scale=y_scale)
 
         return fig
