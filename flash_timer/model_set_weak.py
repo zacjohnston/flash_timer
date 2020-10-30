@@ -13,7 +13,7 @@ class ModelSetWeak:
     def __init__(self,
                  model_set,
                  omp_threads,
-                 leaf_blocks_per_rank,
+                 leaf_blocks_per_rank=(2, 4, 8),
                  mpi_ranks=None,
                  log_basename='sod3d',
                  max_cores=128):
@@ -61,12 +61,11 @@ class ModelSetWeak:
     def expand_sequences(self):
         """Expand sequence attributes
         """
+        max_ranks = int(self.max_cores / self.omp_threads)
         self.leaf_blocks_per_rank = tools.ensure_sequence(self.leaf_blocks_per_rank)
 
         if self.mpi_ranks is None:
-            max_ranks = int(self.max_cores / self.omp_threads)
             self.mpi_ranks = tools.expand_power_sequence(largest=max_ranks)
-
         elif isinstance(self.mpi_ranks, int):
             self.mpi_ranks = tools.expand_power_sequence(largest=self.mpi_ranks)
 
