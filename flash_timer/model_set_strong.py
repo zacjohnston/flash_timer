@@ -93,10 +93,11 @@ class ModelSetStrong:
     # =======================================================
     #                      Plotting
     # =======================================================
-    def plot_speedup(self, unit='evolution', x_scale='linear', y_scale='linear'):
+    def plot_speedup(self, unit='evolution', x_scale='linear', y_scale='linear',
+                     ax=None):
         """Plot strong scaling speedup
         """
-        fig, ax = plt.subplots()
+        fig, ax = self._setup_fig_ax(ax=ax)
         x = self.mpi_ranks
 
         for leafs in self.leaf_blocks:
@@ -112,10 +113,11 @@ class ModelSetStrong:
 
         return fig
 
-    def plot_efficiency(self, unit='evolution', x_scale='log', y_scale='linear'):
+    def plot_efficiency(self, unit='evolution', x_scale='log', y_scale='linear',
+                        ax=None):
         """Plot strong scaling speedup
         """
-        fig, ax = plt.subplots()
+        fig, ax = self._setup_fig_ax(ax=ax)
         x = self.mpi_ranks
 
         for leafs in self.leaf_blocks:
@@ -131,10 +133,11 @@ class ModelSetStrong:
 
         return fig
 
-    def plot_times(self, unit='evolution', x_scale='log', y_scale='linear'):
+    def plot_times(self, unit='evolution', x_scale='log', y_scale='linear',
+                   ax=None):
         """Plot strong-scaling runtimes
         """
-        fig, ax = plt.subplots()
+        fig, ax = self._setup_fig_ax(ax=ax)
         x = self.mpi_ranks
 
         for leafs in self.leaf_blocks:
@@ -146,6 +149,9 @@ class ModelSetStrong:
 
         return fig
 
+    # =======================================================
+    #                      Plot tools
+    # =======================================================
     def _set_ax(self, ax, x, x_label, y_label,
                 x_scale=None, y_scale=None):
         """Set axis properties
@@ -167,4 +173,16 @@ class ModelSetStrong:
         ax.set_xticks(x)
         ax.tick_params(axis='x', which='minor', bottom=False)
 
+    def _setup_fig_ax(self, ax):
+        """Setup fig, ax, checking if ax already provided
 
+        parameters
+        ----------
+        ax : Axes
+        """
+        fig = None
+
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        return fig, ax
