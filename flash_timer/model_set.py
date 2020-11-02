@@ -17,7 +17,7 @@ class ModelSet:
     def __init__(self,
                  scaling_type,
                  model_set,
-                 omp_threads,
+                 omp_threads=None,
                  leaf_blocks=None,
                  leaf_blocks_per_rank=(2, 4, 8),
                  mpi_ranks=None,
@@ -74,12 +74,12 @@ class ModelSet:
         self.load_models()
 
     # =======================================================
-    #                      Loading
+    #                      Init/Loading
     # =======================================================
     def expand_sequences(self):
         """Expand sequence attributes
         """
-        self.omp_threads = tools.ensure_sequence(self.omp_threads)
+        self.expand_omp_threads()
         self.expand_mpi_ranks()
 
         if self.scaling_type == 'weak':
@@ -89,6 +89,15 @@ class ModelSet:
             self.expand_leaf_blocks()
             self.leaf_blocks_per_max_ranks = tools.ensure_sequence(
                                                         self.leaf_blocks_per_max_ranks)
+
+    def expand_omp_threads(self):
+        """Expand omp_threads sequence
+        """
+        if self.omp_threads is None:
+            max_threads = int(self.max_cores / 2)
+            self.omp_threads = tools.expand_power_sequence(largest=max_threads)
+        elif isinstance(self.omp_threads, int):
+            self.omp_threads = tools.expand_power_sequence(largest=self.omp_threads)
 
     def expand_mpi_ranks(self):
         """Expand mpi_ranks sequences
