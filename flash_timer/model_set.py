@@ -166,11 +166,14 @@ class ModelSet:
     # =======================================================
     #                      Analysis
     # =======================================================
-    def get_times(self, omp_threads, unit, leaf):
-        """Return array of times versus mpi_ranks
+    def get_times(self, omp_threads, leaf, unit=None):
+        """Return array of runtimes versus MPI ranks
         """
         times = []
         models = self.models[omp_threads][leaf]
+
+        if unit is None:
+            unit = 'evolution'
 
         for ranks, m in models.items():
             t = float(m.table.loc[unit, 'avg'])
@@ -181,8 +184,8 @@ class ModelSet:
 
         return np.array(times)
 
-    def get_zupcs(self, omp_threads, unit, leaf):
-        """Return array of Zone Updates Per Core Second
+    def get_zupcs(self, omp_threads, leaf, unit=None):
+        """Return array of Zone Updates Per Core Second, versus MPI ranks
         """
         times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
 
@@ -197,11 +200,33 @@ class ModelSet:
 
         return zupcs
 
+    def get_efficiency(self, omp_threads, leaf, unit=None):
+        """Return array of scaling efficiency versus MPI ranks
+        """
+        times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
+
+        if self.scaling_type == 'strong':
+            eff_factor = self.mpi_ranks[omp_threads]
+        else:
+            eff_factor = 1.0
+
+        efficiency = 100 * times[0] / (eff_factor * times)
+
+        return efficiency
+
+    def get_speedup(self, omp_threads, leaf, unit):
+        """Return array of speedup versus MPI ranks
+        """
+        times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
+        speedup = times[0] / times
+
+        return speedup
+
     # =======================================================
     #                      Plotting
     # =======================================================
     def plot_multiple(self, omp_threads=None, plots=None,
-                      unit='evolution', x_scale='log', y_scale='linear',
+                      unit=None, x_scale='log', y_scale='linear',
                       sub_figsize=(5, 3)):
         """Plot multiple sets of models
 
@@ -250,7 +275,7 @@ class ModelSet:
         plt.tight_layout()
         return fig
 
-    def plot_times(self, omp_threads, unit='evolution',
+    def plot_times(self, omp_threads, unit=None,
                    y_scale='linear', x_scale='log',
                    ax=None, data_only=False):
         """Plot scaling
@@ -283,7 +308,7 @@ class ModelSet:
 
         return fig
 
-    def plot_efficiency(self, omp_threads, unit='evolution', x_scale='log',
+    def plot_efficiency(self, omp_threads, unit=None, x_scale='log',
                         ax=None, data_only=False):
         """Plot scaling
         """
@@ -311,7 +336,7 @@ class ModelSet:
 
         return fig
 
-    def plot_speedup(self, omp_threads, unit='evolution',
+    def plot_speedup(self, omp_threads, unit=None,
                      x_scale='linear', y_scale='linear',
                      ax=None, data_only=False):
         """Plot strong scaling speedup
