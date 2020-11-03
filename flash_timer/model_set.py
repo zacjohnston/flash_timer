@@ -208,7 +208,7 @@ class ModelSet:
             omp_threads = self.omp_threads
         if plots is None:
             plots = plot_types[self.scaling_type]
-            
+
         nrows = len(omp_threads)
         ncols = len(plots)
         fig, axes = plt.subplots(nrows, ncols, squeeze=False,
@@ -247,10 +247,8 @@ class ModelSet:
 
         if self.scaling_type == 'strong':
             leaf_sequence = self.leaf_blocks[omp_threads]
-            legend_title = 'Leaf blocks'
         else:
             leaf_sequence = self.leaf_blocks_per_rank
-            legend_title = 'Leaf blocks / rank'
 
         for leaf in leaf_sequence:
             times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
@@ -259,7 +257,7 @@ class ModelSet:
         self._set_ax(ax=ax, x=x, omp_threads=omp_threads,
                      x_label='MPI Ranks', y_label='Time (s)',
                      x_scale=x_scale, y_scale=y_scale,
-                     legend_title=legend_title, data_only=data_only)
+                     data_only=data_only)
 
         return fig
 
@@ -273,11 +271,9 @@ class ModelSet:
 
         if self.scaling_type == 'strong':
             leaf_sequence = self.leaf_blocks[omp_threads]
-            legend_title = 'Leaf blocks'
             eff_factor = self.mpi_ranks[omp_threads]
         else:
             leaf_sequence = self.leaf_blocks_per_rank
-            legend_title = 'Leaf blocks / rank'
             eff_factor = 1.0
 
         for leaf in leaf_sequence:
@@ -289,7 +285,7 @@ class ModelSet:
 
         self._set_ax(ax=ax, x=x, omp_threads=omp_threads,
                      x_label='MPI Ranks', y_label='Efficiency (%)',
-                     x_scale=x_scale, legend_title=legend_title, data_only=data_only)
+                     x_scale=x_scale, data_only=data_only)
 
         return fig
 
@@ -315,7 +311,7 @@ class ModelSet:
         self._set_ax(omp_threads=omp_threads, ax=ax, x=x,
                      x_label='MPI Ranks', y_label='Speedup',
                      x_scale=x_scale, y_scale=y_scale,
-                     legend_title='Leaf blocks', data_only=data_only)
+                     data_only=data_only)
 
         return fig
 
@@ -336,13 +332,12 @@ class ModelSet:
         return fig, ax
 
     def _set_ax(self, ax, x, omp_threads,
-                x_label, y_label,
-                x_scale=None, y_scale=None,
-                legend_title=None, data_only=False):
+                x_label, y_label, x_scale=None, y_scale=None,
+                data_only=False):
         """Set axis properties
         """
         if not data_only:
-            ax.legend(title=legend_title)
+            self._set_ax_legend(ax=ax)
             self._set_ax_title(ax=ax, omp_threads=omp_threads)
             self._set_ax_labels(ax=ax, x_label=x_label, y_label=y_label)
             self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
@@ -363,6 +358,13 @@ class ModelSet:
 
         ax.set_ylabel(y_label)
         self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
+
+    def _set_ax_legend(self, ax):
+        """Set axis legend
+        """
+        titles = {'strong': 'Leaf blocks',
+                  'weak': 'Leaf blocks / rank'}
+        ax.legend(title=titles[self.scaling_type])
 
     def _set_ax_title(self, ax, omp_threads):
         """Set axis title
