@@ -36,6 +36,6 @@ def ensure_sequence(x):
     x : array or scalar
     """
     if isinstance(x, (list, tuple, np.ndarray)):
-        return x
+        return np.array(x)
     else:
         return [x, ]
