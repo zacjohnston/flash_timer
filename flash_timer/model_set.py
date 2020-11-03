@@ -180,7 +180,7 @@ class ModelSet:
     # =======================================================
     def plot_multiple(self, omp_threads=None, plots=None,
                       unit='evolution', x_scale='log', y_scale='linear',
-                      sub_figsize=(4, 2.5)):
+                      sub_figsize=(5, 3)):
         """Plot multiple sets of models
 
         parameters
@@ -194,7 +194,7 @@ class ModelSet:
         sub_figsize : [width, height]
         """
         plot_types = {'strong': ('speedup', 'efficiency'),
-                      'weak': ('time', 'efficiency')}
+                      'weak': ('times', 'efficiency')}
 
         plot_funcs = {'times': self.plot_times,
                       'efficiency': self.plot_efficiency,
@@ -217,13 +217,13 @@ class ModelSet:
         for i, threads in enumerate(omp_threads):
             for j, plot in enumerate(plots):
                 ax = axes[i, j]
+                plot_func = plot_funcs[plot]
+                plot_func(omp_threads=threads, ax=ax, unit=unit, data_only=True)
+
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp_threads=threads,
                                      y_label=ylabels[plot],
                                      x_scale='linear' if plot == 'speedup' else x_scale,
                                      y_scale='linear' if plot == 'speedup' else y_scale)
-
-                plot_func = plot_funcs[plot]
-                plot_func(omp_threads=threads, ax=ax, unit=unit, data_only=True)
 
         plt.tight_layout()
         return fig
@@ -341,8 +341,7 @@ class ModelSet:
             self._set_ax_title(ax=ax, omp_threads=omp_threads)
             self._set_ax_labels(ax=ax, x_label=x_label, y_label=y_label)
             self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
-
-        self._set_ax_xticks(ax=ax, x=x)
+            self._set_ax_xticks(ax=ax, x=x)
 
     def _set_ax_subplot(self, axes, row, col, omp_threads,
                         x_scale, y_scale, y_label):
@@ -350,14 +349,23 @@ class ModelSet:
         """
         ax = axes[row, col]
         nrows = axes.shape[0]
+        ncols = axes.shape[1]
 
-        if (row == 0) and (col == 0):
-            ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
-        elif row == nrows - 1:
+        if col == 0:
+            if self.scaling_type == 'strong':
+                self._set_ax_legend(ax=ax)
+
+            if row == 0:
+                ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+                if self.scaling_type == 'weak':
+                    self._set_ax_legend(ax=ax)
+
+        if row == nrows - 1:
             ax.set_xlabel('MPI ranks')
 
         ax.set_ylabel(y_label)
         self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
+        self._set_ax_xticks(ax=ax, x=self.mpi_ranks[omp_threads])
 
     def _set_ax_legend(self, ax):
         """Set axis legend
