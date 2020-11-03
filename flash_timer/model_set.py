@@ -318,14 +318,11 @@ class ModelSet:
 
         if self.scaling_type == 'strong':
             leaf_sequence = self.leaf_blocks[omp_threads]
-            eff_factor = self.mpi_ranks[omp_threads]
         else:
             leaf_sequence = self.leaf_blocks_per_rank
-            eff_factor = 1.0
 
         for leaf in leaf_sequence:
-            times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
-            y = 100 * times[0] / (eff_factor * times)
+            y = self.get_efficiency(omp_threads=omp_threads, leaf=leaf, unit=unit)
             ax.plot(x, y, marker='o', label=leaf)
 
         ax.plot([1, last_rank], [100, 100], ls='--', color='black')
@@ -348,8 +345,7 @@ class ModelSet:
         x = self.mpi_ranks[omp_threads]
 
         for leaf in self.leaf_blocks[omp_threads]:
-            times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
-            y = times[0] / times
+            y = self.get_speedup(omp_threads=omp_threads, leaf=leaf, unit=unit)
             ax.plot(x, y, marker='o', label=leaf)
 
         last_rank = x[-1]
