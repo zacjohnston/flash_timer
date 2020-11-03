@@ -197,6 +197,11 @@ class ModelSet:
         plot_funcs = {'times': self.plot_times,
                       'efficiency': self.plot_efficiency,
                       'speedup': self.plot_speedup}
+
+        ylabels = {'times': 'Time (s)',
+                   'efficiency': 'Efficiency (%)',
+                   'speedup': 'Speedup'}
+
         if omp_threads is None:
             omp_threads = self.omp_threads
 
@@ -208,7 +213,13 @@ class ModelSet:
         for i, threads in enumerate(omp_threads):
             for j, plot in enumerate(plots):
                 ax = axes[i, j]
+                ax.set_ylabel(ylabels[plot])
                 self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
+
+                if (i == 0) and (j == 0):
+                    ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+                elif i == nrows - 1:
+                    ax.set_xlabel('MPI ranks')
 
                 plot_func = plot_funcs[plot]
                 plot_func(omp_threads=threads, ax=ax, unit=unit, data_only=True)
