@@ -147,7 +147,8 @@ class ModelSet:
                     leaf_blocks = {'strong': leaf,
                                    'weak': leaf * ranks,
                                    }.get(self.scaling_type)
-
+                    print(f'\rLoading {threads}_{leaf_blocks}_{ranks}', end=10*' ')
+                    
                     self.models[threads][leaf][ranks] = model.Model(
                                                         model_set=self.model_set,
                                                         omp_threads=threads,
