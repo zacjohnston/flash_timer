@@ -24,6 +24,8 @@ class ModelSet:
                  leaf_blocks_per_max_ranks=(2, 4, 8),
                  log_basename='sod3d',
                  max_cores=128,
+                 block_size=12,
+                 n_timesteps=100,
                  ):
         """
 
@@ -47,6 +49,8 @@ class ModelSet:
             Prefix used in logfile name, e.g. 'sod3d' for 'sod3d_16.log`
         max_cores : int
             maximum cores available on node
+        block_size : int
+            block side-length in zones (assumes symmetric in x,y,z)
         """
         self.scaling_type = scaling_type
         self.model_set = model_set
@@ -54,6 +58,8 @@ class ModelSet:
         self.mpi_ranks = mpi_ranks
         self.max_cores = max_cores
         self.log_basename = log_basename
+        self.block_size = block_size
+        self.n_timesteps = n_timesteps
 
         if self.scaling_type == 'weak':
             self.leaf_blocks_per_rank = leaf_blocks_per_rank
@@ -174,6 +180,22 @@ class ModelSet:
             times += [t]
 
         return np.array(times)
+
+    def get_zupcs(self, omp_threads, unit, leaf):
+        """Return array of Zone Updates Per Core Second
+        """
+        times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
+
+        if self.scaling_type == 'strong':
+            leaf_blocks = leaf
+        else:
+            leaf_blocks = leaf * self.mpi_ranks[omp_threads]
+
+        zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
+        core_seconds = omp_threads * self.mpi_ranks[omp_threads] * times
+        zupcs = zone_updates / core_seconds
+
+        return zupcs
 
     # =======================================================
     #                      Plotting
@@ -338,10 +360,11 @@ class ModelSet:
         """
         if not data_only:
             self._set_ax_legend(ax=ax)
-            self._set_ax_title(ax=ax, omp_threads=omp_threads)
+            self._set_ax_title(ax=ax)
             self._set_ax_labels(ax=ax, x_label=x_label, y_label=y_label)
             self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
             self._set_ax_xticks(ax=ax, x=x)
+            self._set_ax_text(ax=ax, omp_threads=omp_threads)
 
     def _set_ax_subplot(self, axes, row, col, omp_threads,
                         x_scale, y_scale, y_label):
@@ -352,6 +375,7 @@ class ModelSet:
         ncols = axes.shape[1]
 
         if col == 0:
+            self._set_ax_text(ax=ax, omp_threads=omp_threads)
             if self.scaling_type == 'strong':
                 self._set_ax_legend(ax=ax)
 
@@ -374,10 +398,17 @@ class ModelSet:
                   'weak': 'Leaf blocks / rank'}
         ax.legend(title=titles[self.scaling_type])
 
-    def _set_ax_title(self, ax, omp_threads):
+    def _set_ax_title(self, ax):
         """Set axis title
         """
-        ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+        ax.set_title(f'{self.model_set}')
+
+    def _set_ax_text(self, ax, omp_threads):
+        """Set axis text
+        """
+        ax.text(0.95, 0.05, f'OMP threads = {omp_threads}',
+                verticalalignment='bottom', horizontalalignment='right',
+                fontsize=12, transform=ax.transAxes)
 
     def _set_ax_labels(self, ax, x_label, y_label):
         """Set axis labels
