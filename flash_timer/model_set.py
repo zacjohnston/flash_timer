@@ -178,10 +178,9 @@ class ModelSet:
     # =======================================================
     #                      Plotting
     # =======================================================
-    def plot_multiple(self, omp_threads=None,
-                      plots=('times', 'efficiency'), unit='evolution',
-                      x_scale='log', y_scale='linear',
-                      sub_figsize=(5, 3)):
+    def plot_multiple(self, omp_threads=None, plots=None,
+                      unit='evolution', x_scale='log', y_scale='linear',
+                      sub_figsize=(4, 2.5)):
         """Plot multiple sets of models
 
         parameters
@@ -194,6 +193,9 @@ class ModelSet:
         y_scale : str
         sub_figsize : [width, height]
         """
+        plot_types = {'strong': ('speedup', 'efficiency'),
+                      'weak': ('time', 'efficiency')}
+
         plot_funcs = {'times': self.plot_times,
                       'efficiency': self.plot_efficiency,
                       'speedup': self.plot_speedup}
@@ -204,7 +206,9 @@ class ModelSet:
 
         if omp_threads is None:
             omp_threads = self.omp_threads
-
+        if plots is None:
+            plots = plot_types[self.scaling_type]
+            
         nrows = len(omp_threads)
         ncols = len(plots)
         fig, axes = plt.subplots(nrows, ncols, squeeze=False,
@@ -213,17 +217,15 @@ class ModelSet:
         for i, threads in enumerate(omp_threads):
             for j, plot in enumerate(plots):
                 ax = axes[i, j]
-                ax.set_ylabel(ylabels[plot])
-                self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
-
-                if (i == 0) and (j == 0):
-                    ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
-                elif i == nrows - 1:
-                    ax.set_xlabel('MPI ranks')
+                self._set_ax_subplot(axes=axes, row=i, col=j, omp_threads=threads,
+                                     y_label=ylabels[plot],
+                                     x_scale='linear' if plot == 'speedup' else x_scale,
+                                     y_scale='linear' if plot == 'speedup' else y_scale)
 
                 plot_func = plot_funcs[plot]
                 plot_func(omp_threads=threads, ax=ax, unit=unit, data_only=True)
 
+        plt.tight_layout()
         return fig
 
     def plot_times(self, omp_threads, unit='evolution',
@@ -320,6 +322,19 @@ class ModelSet:
     # =======================================================
     #                      Plot tools
     # =======================================================
+    def _setup_fig_ax(self, ax):
+        """Setup fig, ax, checking if ax already provided
+
+        parameters
+        ----------
+        ax : Axes
+        """
+        fig = None
+        if ax is None:
+            fig, ax = plt.subplots()
+
+        return fig, ax
+
     def _set_ax(self, ax, x, omp_threads,
                 x_label, y_label,
                 x_scale=None, y_scale=None,
@@ -333,6 +348,21 @@ class ModelSet:
             self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
 
         self._set_ax_xticks(ax=ax, x=x)
+
+    def _set_ax_subplot(self, axes, row, col, omp_threads,
+                        x_scale, y_scale, y_label):
+        """Set axis properties for subplot (see plot_multiple)
+        """
+        ax = axes[row, col]
+        nrows = axes.shape[0]
+
+        if (row == 0) and (col == 0):
+            ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+        elif row == nrows - 1:
+            ax.set_xlabel('MPI ranks')
+
+        ax.set_ylabel(y_label)
+        self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
 
     def _set_ax_title(self, ax, omp_threads):
         """Set axis title
@@ -360,18 +390,5 @@ class ModelSet:
         if y_scale is not None:
             ax.set_yscale(y_scale)
 
-    def _setup_fig_ax(self, ax):
-        """Setup fig, ax, checking if ax already provided
-
-        parameters
-        ----------
-        ax : Axes
-        """
-        fig = None
-
-        if ax is None:
-            fig, ax = plt.subplots()
-
-        return fig, ax
 
 
