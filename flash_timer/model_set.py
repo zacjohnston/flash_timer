@@ -148,7 +148,7 @@ class ModelSet:
                                    'weak': leaf * ranks,
                                    }.get(self.scaling_type)
                     print(f'\rLoading {threads}_{leaf_blocks}_{ranks}', end=10*' ')
-                    
+
                     self.models[threads][leaf][ranks] = model.Model(
                                                         model_set=self.model_set,
                                                         omp_threads=threads,
@@ -178,9 +178,46 @@ class ModelSet:
     # =======================================================
     #                      Plotting
     # =======================================================
+    def plot_multiple(self, omp_threads=None,
+                      plots=('times', 'efficiency'), unit='evolution',
+                      x_scale='log', y_scale='linear',
+                      sub_figsize=(5, 3)):
+        """Plot multiple sets of models
+
+        parameters
+        ----------
+        omp_threads : [int]
+        plots : [str]
+            types of plots
+        unit : str
+        x_scale : str
+        y_scale : str
+        sub_figsize : [width, height]
+        """
+        plot_funcs = {'times': self.plot_times,
+                      'efficiency': self.plot_efficiency,
+                      'speedup': self.plot_speedup}
+        if omp_threads is None:
+            omp_threads = self.omp_threads
+
+        nrows = len(omp_threads)
+        ncols = len(plots)
+        fig, axes = plt.subplots(nrows, ncols, squeeze=False,
+                                 figsize=(sub_figsize[0]*ncols, sub_figsize[1]*nrows))
+
+        for i, threads in enumerate(omp_threads):
+            for j, plot in enumerate(plots):
+                ax = axes[i, j]
+                self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
+
+                plot_func = plot_funcs[plot]
+                plot_func(omp_threads=threads, ax=ax, unit=unit, data_only=True)
+
+        return fig
+
     def plot_times(self, omp_threads, unit='evolution',
                    y_scale='linear', x_scale='log',
-                   ax=None):
+                   ax=None, data_only=False):
         """Plot scaling
 
         parameters
@@ -190,6 +227,7 @@ class ModelSet:
         y_scale : str
         x_scale : str
         ax : Axis
+        data_only : bool
         """
         fig, ax = self._setup_fig_ax(ax=ax)
         x = self.mpi_ranks[omp_threads]
@@ -207,12 +245,13 @@ class ModelSet:
 
         self._set_ax(ax=ax, x=x, omp_threads=omp_threads,
                      x_label='MPI Ranks', y_label='Time (s)',
-                     x_scale=x_scale, y_scale=y_scale, legend_title=legend_title)
+                     x_scale=x_scale, y_scale=y_scale,
+                     legend_title=legend_title, data_only=data_only)
 
         return fig
 
     def plot_efficiency(self, omp_threads, unit='evolution', x_scale='log',
-                        ax=None):
+                        ax=None, data_only=False):
         """Plot scaling
         """
         fig, ax = self._setup_fig_ax(ax=ax)
@@ -237,13 +276,13 @@ class ModelSet:
 
         self._set_ax(ax=ax, x=x, omp_threads=omp_threads,
                      x_label='MPI Ranks', y_label='Efficiency (%)',
-                     x_scale=x_scale, legend_title=legend_title)
+                     x_scale=x_scale, legend_title=legend_title, data_only=data_only)
 
         return fig
 
     def plot_speedup(self, omp_threads, unit='evolution',
                      x_scale='linear', y_scale='linear',
-                     ax=None):
+                     ax=None, data_only=False):
         """Plot strong scaling speedup
         """
         if self.scaling_type == 'weak':
@@ -262,7 +301,8 @@ class ModelSet:
 
         self._set_ax(omp_threads=omp_threads, ax=ax, x=x,
                      x_label='MPI Ranks', y_label='Speedup',
-                     x_scale=x_scale, y_scale=y_scale, legend_title='Leaf blocks')
+                     x_scale=x_scale, y_scale=y_scale,
+                     legend_title='Leaf blocks', data_only=data_only)
 
         return fig
 
@@ -272,22 +312,32 @@ class ModelSet:
     def _set_ax(self, ax, x, omp_threads,
                 x_label, y_label,
                 x_scale=None, y_scale=None,
-                legend_title=None):
+                legend_title=None, data_only=False):
         """Set axis properties
         """
-        ax.legend(title=legend_title)
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
-        ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+        if not data_only:
+            ax.legend(title=legend_title)
+            ax.set_xlabel(x_label)
+            ax.set_ylabel(y_label)
+            ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+            self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
 
+        self._set_ax_xticks(ax=ax, x=x)
+
+    def _set_ax_xticks(self, ax, x):
+        """Set axis ticks
+        """
+        ax.xaxis.set_major_formatter(ScalarFormatter())
+        ax.set_xticks(x)
+        ax.tick_params(axis='x', which='minor', bottom=False)
+
+    def _set_ax_scale(self, ax, x_scale, y_scale):
+        """Set axis scales
+        """
         if x_scale is not None:
             ax.set_xscale(x_scale)
         if y_scale is not None:
             ax.set_yscale(y_scale)
-
-        ax.xaxis.set_major_formatter(ScalarFormatter())
-        ax.set_xticks(x)
-        ax.tick_params(axis='x', which='minor', bottom=False)
 
     def _setup_fig_ax(self, ax):
         """Setup fig, ax, checking if ax already provided
