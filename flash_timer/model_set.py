@@ -328,12 +328,22 @@ class ModelSet:
         """
         if not data_only:
             ax.legend(title=legend_title)
-            ax.set_xlabel(x_label)
-            ax.set_ylabel(y_label)
-            ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+            self._set_ax_title(ax=ax, omp_threads=omp_threads)
+            self._set_ax_labels(ax=ax, x_label=x_label, y_label=y_label)
             self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
 
         self._set_ax_xticks(ax=ax, x=x)
+
+    def _set_ax_title(self, ax, omp_threads):
+        """Set axis title
+        """
+        ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+
+    def _set_ax_labels(self, ax, x_label, y_label):
+        """Set axis labels
+        """
+        ax.set_xlabel(x_label)
+        ax.set_ylabel(y_label)
 
     def _set_ax_xticks(self, ax, x):
         """Set axis ticks
