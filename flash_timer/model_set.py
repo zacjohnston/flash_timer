@@ -275,10 +275,55 @@ class ModelSet:
         plt.tight_layout()
         return fig
 
+    def plot(self, omp_threads, y_var, unit=None, x_scale=None,
+             ax=None, data_only=False):
+        """Plot scaling
+        """
+        y_funcs = {'times': self.get_times,
+                   'speedup': self.get_speedup,
+                   'efficiency': self.get_efficiency,
+                   }
+        y_labels = {'times': 'Time (s)',
+                    'speedup': 'Speedup',
+                    'efficiency': 'Efficiency (%)',
+                    }
+        x_scales = {'times': 'log',
+                    'speedup': 'linear',
+                    'efficiency': 'log',
+                    }
+        y_func = y_funcs[y_var]
+
+        if x_scale is None:
+            x_scale = x_scales[y_var]
+
+        fig, ax = self._setup_fig_ax(ax=ax)
+        x = self.mpi_ranks[omp_threads]
+        last_rank = x[-1]
+
+        if self.scaling_type == 'strong':
+            leaf_sequence = self.leaf_blocks[omp_threads]
+        else:
+            leaf_sequence = self.leaf_blocks_per_rank
+
+        for leaf in leaf_sequence:
+            y = y_func(omp_threads=omp_threads, leaf=leaf, unit=unit)
+            ax.plot(x, y, marker='o', label=leaf)
+
+        if y_var == 'efficiency':
+            ax.plot([1, last_rank], [100, 100], ls='--', color='black')
+        elif y_var == 'speedup':
+            ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
+
+        self._set_ax(ax=ax, x=x, omp_threads=omp_threads,
+                     x_label='MPI Ranks', y_label=y_labels[y_var],
+                     x_scale=x_scale, data_only=data_only)
+
+        return fig
+
     def plot_times(self, omp_threads, unit=None,
                    y_scale='linear', x_scale='log',
                    ax=None, data_only=False):
-        """Plot scaling
+        """Plot scaling runtimes versus MPI ranks
 
         parameters
         ----------
