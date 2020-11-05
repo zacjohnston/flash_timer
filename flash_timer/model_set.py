@@ -245,7 +245,9 @@ class ModelSet:
 
         ylabels = {'times': 'Time (s)',
                    'efficiency': 'Efficiency (%)',
-                   'speedup': 'Speedup'}
+                   'speedup': 'Speedup',
+                   'zupcs': 'ZUPCS',
+                   }
 
         if omp_threads is None:
             omp_threads = self.omp_threads
@@ -278,14 +280,17 @@ class ModelSet:
         y_funcs = {'times': self.get_times,
                    'speedup': self.get_speedup,
                    'efficiency': self.get_efficiency,
+                   'zupcs': self.get_zupcs,
                    }
         y_labels = {'times': 'Time (s)',
                     'speedup': 'Speedup',
                     'efficiency': 'Efficiency (%)',
+                    'zupcs': 'ZUPCS',
                     }
         x_scales = {'times': 'log',
                     'speedup': 'linear',
                     'efficiency': 'log',
+                    'zupcs': 'log',
                     }
         y_func = y_funcs[y_var]
 
@@ -359,7 +364,7 @@ class ModelSet:
                 self._set_ax_legend(ax=ax)
 
             if row == 0:
-                ax.set_title(f'{self.model_set}, OMP_THREADS={omp_threads}')
+                ax.set_title(f'{self.model_set}')
                 if self.scaling_type == 'weak':
                     self._set_ax_legend(ax=ax)
 
