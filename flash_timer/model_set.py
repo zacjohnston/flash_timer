@@ -222,6 +222,12 @@ class ModelSet:
 
         return speedup
 
+    def get_model_table(self, omp_threads, leaf, mpi_ranks):
+        """Return timing table of specific model
+        """
+        m = self.models[omp_threads][leaf][mpi_ranks]
+        return m.table
+
     # =======================================================
     #                      Plotting
     # =======================================================
