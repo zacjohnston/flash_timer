@@ -243,10 +243,6 @@ class ModelSet:
         plot_types = {'strong': ('speedup', 'efficiency'),
                       'weak': ('times', 'efficiency')}
 
-        plot_funcs = {'times': self.plot_times,
-                      'efficiency': self.plot_efficiency,
-                      'speedup': self.plot_speedup}
-
         ylabels = {'times': 'Time (s)',
                    'efficiency': 'Efficiency (%)',
                    'speedup': 'Speedup'}
@@ -264,8 +260,8 @@ class ModelSet:
         for i, threads in enumerate(omp_threads):
             for j, plot in enumerate(plots):
                 ax = axes[i, j]
-                plot_func = plot_funcs[plot]
-                plot_func(omp_threads=threads, ax=ax, unit=unit, data_only=True)
+                self.plot(omp_threads=threads, y_var=plot, ax=ax,
+                          unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp_threads=threads,
                                      y_label=ylabels[plot],
