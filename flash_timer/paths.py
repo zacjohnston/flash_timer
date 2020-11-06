@@ -27,6 +27,38 @@ import os
 
 
 # ===============================================================
+#                      FlashTimer
+# ===============================================================
+def flash_timer_path():
+    """Return path to flash_timer repo
+    """
+    try:
+        path = os.environ['FLASH_TIMER']
+    except KeyError:
+        raise EnvironmentError('Environment variable FLASH_TIMER not set. '
+                               'Set path to flash_timer directory, e.g., '
+                               "'export FLASH_TIMER=${HOME}/codes/flash_timer'")
+    return path
+
+
+def config_filepath(name=None):
+    """Return path to config file
+
+    parameters
+    ----------
+    name : str (optional)
+        base name of config file
+        defaults to 'default' (for config file 'default.ini')
+    """
+    path = flash_timer_path()
+
+    if name is None:
+        name = 'default'
+
+    return os.path.join(path, 'flash_timer', 'config', f'{name}.ini')
+
+
+# ===============================================================
 #                      FLASH files
 # ===============================================================
 def model_path(model, model_set):
