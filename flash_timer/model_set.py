@@ -26,6 +26,7 @@ class ModelSet:
                  max_cores=128,
                  block_size=12,
                  n_timesteps=100,
+                 unit='evolution',
                  ):
         """
 
@@ -60,6 +61,9 @@ class ModelSet:
         self.log_basename = log_basename
         self.block_size = block_size
         self.n_timesteps = n_timesteps
+        self.unit = unit
+        self.models = {}
+        self.data = {}
 
         if self.scaling_type == 'weak':
             self.leaf_blocks_per_rank = leaf_blocks_per_rank
@@ -75,9 +79,8 @@ class ModelSet:
             raise ValueError("scaling_type must be 'strong' or 'weak'")
 
         self.expand_sequences()
-
-        self.models = {}
         self.load_models()
+        self.extract_data(unit=self.unit)
 
     # =======================================================
     #                      Init/Loading
@@ -162,6 +165,28 @@ class ModelSet:
                                                         mpi_ranks=ranks,
                                                         log_basename=self.log_basename
                                                         )
+        print()
+
+    def extract_data(self, unit):
+        """Extract performace quantities from model tables
+        """
+        funcs = {'times': self.get_times,
+                 'speedup': self.get_speedup,
+                 'efficiency': self.get_efficiency,
+                 'zupcs': self.get_zupcs,
+                 }
+
+        print('Extracting performance data')
+        for key, func in funcs.items():
+            self.data[key] = {}
+
+            for omp_threads in self.omp_threads:
+                self.data[key][omp_threads] = {}
+                leaf_sequence = self.get_leaf_sequence(omp_threads)
+
+                for leaf in leaf_sequence:
+                    self.data[key][omp_threads][leaf] = func(omp_threads=omp_threads,
+                                                             leaf=leaf, unit=unit)
 
     # =======================================================
     #                      Analysis
@@ -227,6 +252,16 @@ class ModelSet:
         """
         m = self.models[omp_threads][leaf][mpi_ranks]
         return m.table
+
+    def get_leaf_sequence(self, omp_threads):
+        """Return sequence of leaf variable according to scaling_type
+        """
+        if self.scaling_type == 'strong':
+            leaf_sequence = self.leaf_blocks[omp_threads]
+        else:
+            leaf_sequence = self.leaf_blocks_per_rank
+
+        return leaf_sequence
 
     # =======================================================
     #                      Plotting
