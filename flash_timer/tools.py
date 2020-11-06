@@ -3,8 +3,46 @@ Misc. general-use functions
 """
 
 import numpy as np
+import os
+import configparser
+import ast
+
+# flash_timer
+from . import paths
 
 
+# =======================================================================
+#                      Config files
+# =======================================================================
+def load_config(name=None):
+    """Load .ini config file and return contents as dict
+
+    parameters
+    ----------
+    name: str
+        name of config file to load
+    """
+    filepath = paths.config_filepath(name=name)
+    print(f'Loading config: {filepath}')
+
+    if not os.path.exists(filepath):
+        raise FileNotFoundError(f'Config file not found: {filepath}')
+
+    ini = configparser.ConfigParser()
+    ini.read(filepath)
+
+    config = {}
+    for section in ini.sections():
+        config[section] = {}
+        for option in ini.options(section):
+            config[section][option] = ast.literal_eval(ini.get(section, option))
+
+    return config
+
+
+# =======================================================================
+#                      Misc. tools
+# =======================================================================
 def expand_power_sequence(largest=None, length=None):
     """Return sequence of powers-of-two
 
