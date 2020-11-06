@@ -165,11 +165,7 @@ class ModelSet:
         """
         for threads in self.omp_threads:
             self.models[threads] = {}
-
-            if self.scaling_type == 'strong':
-                leaf_sequence = self.leaf_blocks[threads]
-            else:
-                leaf_sequence = self.leaf_blocks_per_rank
+            leaf_sequence = self.get_leaf_sequence(omp_threads=threads)
 
             for leaf in leaf_sequence:
                 self.models[threads][leaf] = {}
@@ -246,10 +242,8 @@ class ModelSet:
         """
         times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
 
-        if self.scaling_type == 'strong':
-            eff_factor = self.mpi_ranks[omp_threads]
-        else:
-            eff_factor = 1.0
+        eff_factor = {'strong': self.mpi_ranks[omp_threads],
+                      'weak': 1.0}.get(self.scaling_type)
 
         efficiency = 100 * times[0] / (eff_factor * times)
 
@@ -273,11 +267,9 @@ class ModelSet:
         """Return sequence of leaf variable according to scaling_type
         """
         if self.scaling_type == 'strong':
-            leaf_sequence = self.leaf_blocks[omp_threads]
+            return self.leaf_blocks[omp_threads]
         else:
-            leaf_sequence = self.leaf_blocks_per_rank
-
-        return leaf_sequence
+            return self.leaf_blocks_per_rank
 
     def get_leaf_blocks(self, leaf, omp_threads):
         """Return array of leaf_blocks according to scaling_type
@@ -403,6 +395,7 @@ class ModelSet:
             ax.set_xlabel(self.config['plot']['labels'][x_var])
 
         ax.set_ylabel(self.config['plot']['labels'][y_var])
+        
         self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                            x_scale=x_scale, y_scale=y_scale)
         self._set_ax_xticks(ax=ax, x=self.mpi_ranks[omp_threads])
