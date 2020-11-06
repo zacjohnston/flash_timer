@@ -318,11 +318,6 @@ class ModelSet:
              ax=None, data_only=False):
         """Plot scaling
         """
-        y_funcs = {'times': self.get_times,
-                   'speedup': self.get_speedup,
-                   'efficiency': self.get_efficiency,
-                   'zupcs': self.get_zupcs,
-                   }
         y_labels = {'times': 'Time (s)',
                     'speedup': 'Speedup',
                     'efficiency': 'Efficiency (%)',
@@ -333,7 +328,6 @@ class ModelSet:
                     'efficiency': 'log',
                     'zupcs': 'log',
                     }
-        y_func = y_funcs[y_var]
 
         if x_scale is None:
             x_scale = x_scales[y_var]
@@ -342,13 +336,10 @@ class ModelSet:
         x = self.mpi_ranks[omp_threads]
         last_rank = x[-1]
 
-        if self.scaling_type == 'strong':
-            leaf_sequence = self.leaf_blocks[omp_threads]
-        else:
-            leaf_sequence = self.leaf_blocks_per_rank
+        leaf_sequence = self.get_leaf_sequence(omp_threads=omp_threads)
 
         for leaf in leaf_sequence:
-            y = y_func(omp_threads=omp_threads, leaf=leaf, unit=unit)
+            y = self.data[y_var][omp_threads][leaf]
             ax.plot(x, y, marker='o', label=leaf)
 
         if y_var == 'efficiency':
