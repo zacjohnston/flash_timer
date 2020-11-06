@@ -175,9 +175,7 @@ class ModelSet:
                 self.models[threads][leaf] = {}
 
                 for ranks in self.mpi_ranks[threads]:
-                    leaf_blocks = {'strong': leaf,
-                                   'weak': leaf * ranks,
-                                   }.get(self.scaling_type)
+                    leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp_threads=threads)
                     print(f'\rLoading {threads}_{leaf_blocks}_{ranks}', end=10*' ')
 
                     self.models[threads][leaf][ranks] = model.Model(
@@ -235,11 +233,7 @@ class ModelSet:
         """Return array of Zone Updates Per Core Second, versus MPI ranks
         """
         times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
-
-        if self.scaling_type == 'strong':
-            leaf_blocks = leaf
-        else:
-            leaf_blocks = leaf * self.mpi_ranks[omp_threads]
+        leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp_threads=omp_threads)
 
         zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
         core_seconds = omp_threads * self.mpi_ranks[omp_threads] * times
@@ -284,6 +278,14 @@ class ModelSet:
             leaf_sequence = self.leaf_blocks_per_rank
 
         return leaf_sequence
+
+    def get_leaf_blocks(self, leaf, omp_threads):
+        """Return array of leaf_blocks according to scaling_type
+        """
+        if self.scaling_type == 'strong':
+            return leaf
+        else:
+            return leaf * self.mpi_ranks[omp_threads]
 
     # =======================================================
     #                      Plotting
