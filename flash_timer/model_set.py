@@ -102,7 +102,7 @@ class ModelSet:
         plot_config = tools.load_config(name='plotting')
 
         # override any options from plotting.ini
-        plot_config['plotting'].update(config['plotting'])
+        plot_config['plot'].update(config['plot'])
         config.update(plot_config)
 
         self.config = config
@@ -220,7 +220,7 @@ class ModelSet:
         models = self.models[omp_threads][leaf]
 
         if unit is None:
-            unit = 'evolution'
+            unit = self.config['properties']['unit']
 
         for ranks, m in models.items():
             t = float(m.table.loc[unit, 'avg'])
@@ -306,12 +306,6 @@ class ModelSet:
         plot_types = {'strong': ('speedup', 'efficiency'),
                       'weak': ('times', 'efficiency')}
 
-        ylabels = {'times': 'Time (s)',
-                   'efficiency': 'Efficiency (%)',
-                   'speedup': 'Speedup',
-                   'zupcs': 'ZUPCS',
-                   }
-
         if omp_threads is None:
             omp_threads = self.omp_threads
         if plots is None:
@@ -329,10 +323,9 @@ class ModelSet:
                           unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp_threads=threads,
-                                     y_label=ylabels[plot],
+                                     y_label=self.config['plot']['labels'][plot],
                                      x_scale='linear' if plot == 'speedup' else x_scale,
                                      y_scale='linear' if plot == 'speedup' else y_scale)
-
         plt.tight_layout()
         return fig
 
@@ -340,11 +333,6 @@ class ModelSet:
              ax=None, data_only=False):
         """Plot scaling
         """
-        y_labels = {'times': 'Time (s)',
-                    'speedup': 'Speedup',
-                    'efficiency': 'Efficiency (%)',
-                    'zupcs': 'ZUPCS',
-                    }
         x_scales = {'times': 'log',
                     'speedup': 'linear',
                     'efficiency': 'log',
@@ -370,7 +358,7 @@ class ModelSet:
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
         self._set_ax(ax=ax, x=x, omp_threads=omp_threads,
-                     x_label='MPI Ranks', y_label=y_labels[y_var],
+                     x_label='MPI Ranks', y_label=self.config['plot']['labels'][y_var],
                      x_scale=x_scale, data_only=data_only)
 
         return fig
