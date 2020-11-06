@@ -289,7 +289,7 @@ class ModelSet:
     #                      Plotting
     # =======================================================
     def plot_multiple(self, omp_threads=None, plots=None,
-                      unit=None, x_scale='log', y_scale='linear',
+                      unit=None, x_scale=None, y_scale=None,
                       sub_figsize=(5, 3)):
         """Plot multiple sets of models
 
@@ -303,13 +303,10 @@ class ModelSet:
         y_scale : str
         sub_figsize : [width, height]
         """
-        plot_types = {'strong': ('speedup', 'efficiency'),
-                      'weak': ('times', 'efficiency')}
-
         if omp_threads is None:
             omp_threads = self.omp_threads
         if plots is None:
-            plots = plot_types[self.scaling_type]
+            plots = self.config['plot']['multiplot'][self.scaling_type]
 
         nrows = len(omp_threads)
         ncols = len(plots)
@@ -323,9 +320,8 @@ class ModelSet:
                           unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp_threads=threads,
-                                     y_label=self.config['plot']['labels'][plot],
-                                     x_scale='linear' if plot == 'speedup' else x_scale,
-                                     y_scale='linear' if plot == 'speedup' else y_scale)
+                                     x_var='mpi_ranks', y_var=plot,
+                                     x_scale=x_scale, y_scale=y_scale)
         plt.tight_layout()
         return fig
 
@@ -333,15 +329,6 @@ class ModelSet:
              ax=None, data_only=False):
         """Plot scaling
         """
-        x_scales = {'times': 'log',
-                    'speedup': 'linear',
-                    'efficiency': 'log',
-                    'zupcs': 'log',
-                    }
-
-        if x_scale is None:
-            x_scale = x_scales[y_var]
-
         fig, ax = self._setup_fig_ax(ax=ax)
         x = self.mpi_ranks[omp_threads]
         last_rank = x[-1]
@@ -357,8 +344,7 @@ class ModelSet:
         elif y_var == 'speedup':
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
-        self._set_ax(ax=ax, x=x, omp_threads=omp_threads,
-                     x_label='MPI Ranks', y_label=self.config['plot']['labels'][y_var],
+        self._set_ax(ax=ax, x_var='mpi_ranks', y_var=y_var, x=x, omp_threads=omp_threads,
                      x_scale=x_scale, data_only=data_only)
 
         return fig
@@ -379,21 +365,22 @@ class ModelSet:
 
         return fig, ax
 
-    def _set_ax(self, ax, x, omp_threads,
-                x_label, y_label, x_scale=None, y_scale=None,
+    def _set_ax(self, ax, x, x_var, y_var, omp_threads,
+                x_scale=None, y_scale=None,
                 data_only=False):
         """Set axis properties
         """
         if not data_only:
             self._set_ax_legend(ax=ax)
             self._set_ax_title(ax=ax)
-            self._set_ax_labels(ax=ax, x_label=x_label, y_label=y_label)
-            self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
+            self._set_ax_labels(ax=ax, x_var=x_var, y_var=y_var)
+            self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
+                               x_scale=x_scale, y_scale=y_scale)
             self._set_ax_xticks(ax=ax, x=x)
             self._set_ax_text(ax=ax, omp_threads=omp_threads)
 
-    def _set_ax_subplot(self, axes, row, col, omp_threads,
-                        x_scale, y_scale, y_label):
+    def _set_ax_subplot(self, axes, x_var, y_var, row, col, omp_threads,
+                        x_scale, y_scale):
         """Set axis properties for subplot (see plot_multiple)
         """
         ax = axes[row, col]
@@ -411,10 +398,11 @@ class ModelSet:
                     self._set_ax_legend(ax=ax)
 
         if row == nrows - 1:
-            ax.set_xlabel('MPI ranks')
+            ax.set_xlabel(self.config['plot']['labels'][x_var])
 
-        ax.set_ylabel(y_label)
-        self._set_ax_scale(ax=ax, x_scale=x_scale, y_scale=y_scale)
+        ax.set_ylabel(self.config['plot']['labels'][y_var])
+        self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
+                           x_scale=x_scale, y_scale=y_scale)
         self._set_ax_xticks(ax=ax, x=self.mpi_ranks[omp_threads])
 
     def _set_ax_legend(self, ax):
@@ -436,11 +424,20 @@ class ModelSet:
                 verticalalignment='bottom', horizontalalignment='right',
                 fontsize=12, transform=ax.transAxes)
 
-    def _set_ax_labels(self, ax, x_label, y_label):
+    def _set_ax_labels(self, ax, x_var, y_var):
         """Set axis labels
+
+        parameters
+        ----------
+        ax : Axes
+        x_var : str
+        y_var : str
         """
-        ax.set_xlabel(x_label)
-        ax.set_ylabel(y_label)
+        def get_label(key):
+            return self.config['plot']['labels'].get(key, key)
+
+        ax.set_xlabel(get_label(x_var))
+        ax.set_ylabel(get_label(y_var))
 
     def _set_ax_xticks(self, ax, x):
         """Set axis ticks
@@ -449,13 +446,20 @@ class ModelSet:
         ax.set_xticks(x)
         ax.tick_params(axis='x', which='minor', bottom=False)
 
-    def _set_ax_scale(self, ax, x_scale, y_scale):
+    def _set_ax_scale(self, ax, x_var, y_var, x_scale, y_scale):
         """Set axis scales
         """
-        if x_scale is not None:
-            ax.set_xscale(x_scale)
-        if y_scale is not None:
-            ax.set_yscale(y_scale)
+        def get_scale(var):
+            for scale in ['log', 'linear']:
+                if var in self.config['plot']['ax_scales'][scale]:
+                    return scale
+            return 'linear'
 
+        if x_scale is None:
+            x_scale = get_scale(x_var)
+        if y_scale is None:
+            y_scale = get_scale(y_var)
 
+        ax.set_xscale(x_scale)
+        ax.set_yscale(y_scale)
 
