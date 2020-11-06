@@ -21,6 +21,7 @@ class ModelSet:
                  leaf_blocks=None,
                  leaf_blocks_per_rank=(2, 4, 8),
                  mpi_ranks=None,
+                 config=None,
                  leaf_blocks_per_max_ranks=(2, 4, 8),
                  log_basename='sod3d',
                  max_cores=128,
@@ -52,6 +53,9 @@ class ModelSet:
             maximum cores available on node
         block_size : int
             block side-length in zones (assumes symmetric in x,y,z)
+        config : str
+            basename of config file, e.g. 'amd' for 'config/amd.ini'
+            (defaults to 'default')
         """
         self.scaling_type = scaling_type
         self.model_set = model_set
@@ -64,6 +68,7 @@ class ModelSet:
         self.unit = unit
         self.models = {}
         self.data = {}
+        self.config = None
 
         if self.scaling_type == 'weak':
             self.leaf_blocks_per_rank = leaf_blocks_per_rank
@@ -78,6 +83,7 @@ class ModelSet:
         else:
             raise ValueError("scaling_type must be 'strong' or 'weak'")
 
+        self.load_config(config=config)
         self.expand_sequences()
         self.load_models()
         self.extract_data(unit=self.unit)
@@ -85,6 +91,22 @@ class ModelSet:
     # =======================================================
     #                      Init/Loading
     # =======================================================
+    def load_config(self, config=None):
+        """Load config parameters from file
+
+        parameters
+        ----------
+        config : str
+        """
+        config = tools.load_config(name=config)
+        plot_config = tools.load_config(name='plotting')
+
+        # override any options from plotting.ini
+        plot_config['plotting'].update(config['plotting'])
+        config.update(plot_config)
+
+        self.config = config
+
     def expand_sequences(self):
         """Expand sequence attributes
         """

@@ -20,8 +20,12 @@ def load_config(name=None):
     parameters
     ----------
     name: str
-        name of config file to load
+        basename of config file, e.g. 'amd' for 'config/amd.ini'.
+        defaults to 'default'
     """
+    if name is None:
+        name = 'default'
+
     filepath = paths.config_filepath(name=name)
     print(f'Loading config: {filepath}')
 

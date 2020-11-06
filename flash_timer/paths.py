@@ -41,20 +41,15 @@ def flash_timer_path():
     return path
 
 
-def config_filepath(name=None):
+def config_filepath(name):
     """Return path to config file
 
     parameters
     ----------
-    name : str (optional)
-        base name of config file
-        defaults to 'default' (for config file 'default.ini')
+    name : str
+        basename of config file
     """
     path = flash_timer_path()
-
-    if name is None:
-        name = 'default'
-
     return os.path.join(path, 'flash_timer', 'config', f'{name}.ini')
 
 
