@@ -19,10 +19,10 @@ class ModelSet:
                  model_set,
                  omp_threads=None,
                  leaf_blocks=None,
-                 leaf_blocks_per_rank=(2, 4, 8),
+                 leaf_blocks_per_rank=None,
                  mpi_ranks=None,
                  config=None,
-                 leaf_blocks_per_max_ranks=(2, 4, 8),
+                 leaf_blocks_per_max_ranks=None,
                  log_basename='sod3d',
                  max_cores=128,
                  block_size=12,
@@ -68,22 +68,21 @@ class ModelSet:
         self.unit = unit
         self.models = {}
         self.data = {}
-        self.config = None
 
         if self.scaling_type == 'weak':
             self.leaf_blocks_per_rank = leaf_blocks_per_rank
             self.leaf_blocks = None
             self.leaf_blocks_per_max_ranks = None
-
         elif self.scaling_type == 'strong':
             self.leaf_blocks_per_rank = None
             self.leaf_blocks = leaf_blocks
             self.leaf_blocks_per_max_ranks = leaf_blocks_per_max_ranks
-
         else:
             raise ValueError("scaling_type must be 'strong' or 'weak'")
 
+        self.config = None
         self.load_config(config=config)
+
         self.expand_sequences()
         self.load_models()
         self.extract_data(unit=self.unit)
@@ -98,14 +97,19 @@ class ModelSet:
         ----------
         config : str
         """
-        config = tools.load_config(name=config)
+        config_dict = tools.load_config(name=config)
         plot_config = tools.load_config(name='plotting')
 
         # override any options from plotting.ini
-        plot_config['plot'].update(config['plot'])
-        config.update(plot_config)
+        plot_config['plot'].update(config_dict['plot'])
+        config_dict.update(plot_config)
 
-        self.config = config
+        self.config = config_dict
+
+        if self.leaf_blocks_per_rank is None:
+            self.leaf_blocks_per_rank = self.config['params']['leaf_blocks_per_rank']
+        if self.leaf_blocks_per_max_ranks is None:
+            self.leaf_blocks_per_max_ranks = self.config['params']['leaf_blocks_per_max_ranks']
 
     def expand_sequences(self):
         """Expand sequence attributes
@@ -214,7 +218,7 @@ class ModelSet:
         models = self.models[omp_threads][leaf]
 
         if unit is None:
-            unit = self.config['properties']['unit']
+            unit = self.config['params']['unit']
 
         for ranks, m in models.items():
             t = float(m.table.loc[unit, 'avg'])
@@ -395,7 +399,7 @@ class ModelSet:
             ax.set_xlabel(self.config['plot']['labels'][x_var])
 
         ax.set_ylabel(self.config['plot']['labels'][y_var])
-        
+
         self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                            x_scale=x_scale, y_scale=y_scale)
         self._set_ax_xticks(ax=ax, x=self.mpi_ranks[omp_threads])
@@ -449,6 +453,9 @@ class ModelSet:
                 if var in self.config['plot']['ax_scales'][scale]:
                     return scale
             return 'linear'
+
+        if y_var == 'speedup':
+            x_scale = 'linear'
 
         if x_scale is None:
             x_scale = get_scale(x_var)
