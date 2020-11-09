@@ -173,15 +173,15 @@ class ModelSet:
 
             for leaf in leaf_sequence:
                 self.models[threads][leaf] = {}
+                leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp_threads=threads)
 
-                for ranks in self.mpi_ranks[threads]:
-                    leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp_threads=threads)
-                    print(f'\rLoading {threads}_{leaf_blocks}_{ranks}', end=10*' ')
+                for i, ranks in enumerate(self.mpi_ranks[threads]):
+                    print(f'\rLoading {threads}_{leaf_blocks[i]}_{ranks}', end=10*' ')
 
                     self.models[threads][leaf][ranks] = model.Model(
                                                         model_set=self.model_set,
                                                         omp_threads=threads,
-                                                        leaf_blocks=leaf_blocks,
+                                                        leaf_blocks=leaf_blocks[i],
                                                         mpi_ranks=ranks,
                                                         log_basename=self.log_basename
                                                         )
@@ -276,10 +276,11 @@ class ModelSet:
             return self.leaf_blocks_per_rank
 
     def get_leaf_blocks(self, leaf, omp_threads):
-        """Return array of leaf_blocks according to scaling_type
+        """Return array of leaf_blocks versus MPI ranks
         """
         if self.scaling_type == 'strong':
-            return leaf
+            n_runs = len(self.mpi_ranks[omp_threads])
+            return np.full(n_runs, leaf)
         else:
             return leaf * self.mpi_ranks[omp_threads]
 
