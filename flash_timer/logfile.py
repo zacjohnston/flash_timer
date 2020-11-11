@@ -23,7 +23,28 @@ def extract_table(filepath, loglines=None):
                         # names=['unit', 'tot', 'calls', 'avg', 'pct'],
                         index_col='unit', nrows=table_end-table_start)
 
+    renamed_units = rename_duplicate_units(table)
+    table.index = pd.Index(renamed_units, name='unit')
+
     return table
+
+
+def rename_duplicate_units(table):
+    """Return list of units with duplicates renamed
+
+    parameters
+    ----------
+    table : pd.DataFrame
+    """
+    new_units = []
+    old_units = list(table.index)
+
+    for i, unit in enumerate(old_units):
+        totalcount = old_units.count(unit)
+        count = old_units[:i].count(unit)
+        new_units.append(f'{unit}_{count + 1}' if totalcount > 1 else unit)
+
+    return new_units
 
 
 def get_evolution(filepath=None, loglines=None, offset=19):
