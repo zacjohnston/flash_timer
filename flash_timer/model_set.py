@@ -12,8 +12,8 @@ class ModelSet:
     """A collection of performace-scaling FLASH models
 
     Two modes:
-        - ModelSet('strong', model_set, omp, leaf_blocks, mpi_ranks)
-        - ModelSet('weak', model_set, omp, leaf_blocks_per_Rank, mpi_ranks)
+        - ModelSet('strong', model_set, omp, leaf_blocks, mpi)
+        - ModelSet('weak', model_set, omp, leaf_blocks_per_Rank, mpi)
     """
     def __init__(self,
                  scaling_type,
@@ -21,7 +21,7 @@ class ModelSet:
                  omp=None,
                  leaf_blocks=None,
                  leaf_blocks_per_rank=None,
-                 mpi_ranks=None,
+                 mpi=None,
                  config=None,
                  leaf_blocks_per_max_ranks=None,
                  log_basename='sod3d',
@@ -44,7 +44,7 @@ class ModelSet:
             (strong only) list of total leaf blocks
         leaf_blocks_per_rank : [int] or int
             (weak only) list of leaf blocks per MPI rank
-        mpi_ranks : [int] or int
+        mpi : [int] or int
             list of MPI ranks used
         leaf_blocks_per_max_ranks : [int]
             (strong only) number of leaf blocks per maximum rank number
@@ -61,7 +61,7 @@ class ModelSet:
         self.scaling_type = scaling_type
         self.model_set = model_set
         self.omp = omp
-        self.mpi_ranks = mpi_ranks
+        self.mpi = mpi
         self.leaf_blocks_per_rank = leaf_blocks_per_rank
         self.leaf_blocks = leaf_blocks
         self.leaf_blocks_per_max_ranks = leaf_blocks_per_max_ranks
@@ -113,7 +113,7 @@ class ModelSet:
         """Expand sequence attributes
         """
         self.expand_omp()
-        self.expand_mpi_ranks()
+        self.expand_mpi()
 
         if self.scaling_type == 'weak':
             self.leaf_blocks_per_rank = tools.ensure_sequence(self.leaf_blocks_per_rank)
@@ -132,21 +132,21 @@ class ModelSet:
         elif isinstance(self.omp, int):
             self.omp = tools.expand_power_sequence(largest=self.omp)
 
-    def expand_mpi_ranks(self):
-        """Expand mpi_ranks sequences
+    def expand_mpi(self):
+        """Expand mpi sequences
         """
-        mpi_ranks = {}
+        mpi = {}
         for omp in self.omp:
             max_ranks = int(self.max_cores / omp)
 
-            if self.mpi_ranks is None:
-                mpi_ranks[omp] = tools.expand_power_sequence(largest=max_ranks)
-            elif isinstance(self.mpi_ranks, int):
-                mpi_ranks[omp] = tools.expand_power_sequence(largest=self.mpi_ranks)
+            if self.mpi is None:
+                mpi[omp] = tools.expand_power_sequence(largest=max_ranks)
+            elif isinstance(self.mpi, int):
+                mpi[omp] = tools.expand_power_sequence(largest=self.mpi)
             else:
-                mpi_ranks[omp] = self.mpi_ranks
+                mpi[omp] = self.mpi
 
-        self.mpi_ranks = mpi_ranks
+        self.mpi = mpi
 
     def expand_leaf_blocks(self):
         """Expand leaf_blocks sequences
@@ -173,14 +173,14 @@ class ModelSet:
                 self.models[omp][leaf] = {}
                 leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
 
-                for i, ranks in enumerate(self.mpi_ranks[omp]):
+                for i, ranks in enumerate(self.mpi[omp]):
                     print(f'\rLoading {omp}_{leaf_blocks[i]}_{ranks}', end=10*' ')
 
                     self.models[omp][leaf][ranks] = model.Model(
                                                         model_set=self.model_set,
                                                         omp=omp,
                                                         leaf_blocks=leaf_blocks[i],
-                                                        mpi_ranks=ranks,
+                                                        mpi=ranks,
                                                         log_basename=self.log_basename)
         print()
 
@@ -217,11 +217,11 @@ class ModelSet:
             for leaf, leaf_set in omp_set.items():
                 mpi_dict = {}
 
-                for mpi_ranks, m in leaf_set.items():
-                    mpi_dict[mpi_ranks] = m.table.to_xarray()
+                for mpi, mod in leaf_set.items():
+                    mpi_dict[mpi] = mod.table.to_xarray()
 
-                leaf_xr = xr.concat(mpi_dict.values(), dim='mpi_ranks')
-                leaf_xr.coords['mpi_ranks'] = list(mpi_dict.keys())
+                leaf_xr = xr.concat(mpi_dict.values(), dim='mpi')
+                leaf_xr.coords['mpi'] = list(mpi_dict.keys())
                 leaf_dict[leaf] = leaf_xr
 
             omp_xr = xr.concat(leaf_dict.values(), dim='leaf')
@@ -261,7 +261,7 @@ class ModelSet:
         leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
 
         zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
-        core_seconds = omp * self.mpi_ranks[omp] * times
+        core_seconds = omp * self.mpi[omp] * times
         zupcs = zone_updates / core_seconds
 
         return zupcs
@@ -271,7 +271,7 @@ class ModelSet:
         """
         times = self.get_times(omp=omp, unit=unit, leaf=leaf)
 
-        eff_factor = {'strong': self.mpi_ranks[omp],
+        eff_factor = {'strong': self.mpi[omp],
                       'weak': 1.0}.get(self.scaling_type)
 
         efficiency = 100 * times[0] / (eff_factor * times)
@@ -286,10 +286,10 @@ class ModelSet:
 
         return speedup
 
-    def get_model_table(self, omp, leaf, mpi_ranks):
+    def get_model_table(self, omp, leaf, mpi):
         """Return timing table of specific model
         """
-        m = self.models[omp][leaf][mpi_ranks]
+        m = self.models[omp][leaf][mpi]
         return m.table
 
     def get_leaf_sequence(self, omp):
@@ -304,10 +304,10 @@ class ModelSet:
         """Return array of leaf_blocks versus MPI ranks
         """
         if self.scaling_type == 'strong':
-            n_runs = len(self.mpi_ranks[omp])
+            n_runs = len(self.mpi[omp])
             return np.full(n_runs, leaf)
         else:
-            return leaf * self.mpi_ranks[omp]
+            return leaf * self.mpi[omp]
 
     # =======================================================
     #                      Plotting
@@ -346,7 +346,7 @@ class ModelSet:
                           unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp=threads,
-                                     x_var='mpi_ranks', y_var=plot,
+                                     x_var='mpi', y_var=plot,
                                      x_scale=x_scale, y_scale=y_scale)
         plt.tight_layout()
         return fig
@@ -356,7 +356,7 @@ class ModelSet:
         """Plot scaling
         """
         fig, ax = self._setup_fig_ax(ax=ax)
-        x = self.mpi_ranks[omp]
+        x = self.mpi[omp]
         last_rank = x[-1]
 
         leaf_sequence = self.get_leaf_sequence(omp=omp)
@@ -370,7 +370,7 @@ class ModelSet:
         elif y_var == 'speedup':
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
-        self._set_ax(ax=ax, x_var='mpi_ranks', y_var=y_var, x=x, omp=omp,
+        self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
                      x_scale=x_scale, data_only=data_only)
 
         return fig
@@ -430,7 +430,7 @@ class ModelSet:
 
         self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                            x_scale=x_scale, y_scale=y_scale)
-        self._set_ax_xticks(ax=ax, x=self.mpi_ranks[omp])
+        self._set_ax_xticks(ax=ax, x=self.mpi[omp])
 
     def _set_ax_legend(self, ax):
         """Set axis legend

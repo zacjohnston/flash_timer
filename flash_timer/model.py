@@ -9,7 +9,7 @@ class Model:
                  model_set,
                  omp,
                  leaf_blocks,
-                 mpi_ranks,
+                 mpi,
                  log_filepath=None,
                  log_basename='sod3d'):
         """
@@ -21,7 +21,7 @@ class Model:
             total no. leaf blocks
         omp : int
             no. OpenMP threads used
-        mpi_ranks : int
+        mpi : int
             no. MPI ranks used
         log_filepath : str
             path to .log file (optional)
@@ -30,12 +30,12 @@ class Model:
             log_filepath = paths.log_filepath(model_set=model_set,
                                               leaf_blocks=leaf_blocks,
                                               omp=omp,
-                                              mpi_ranks=mpi_ranks,
+                                              mpi=mpi,
                                               basename=log_basename)
 
         self.log_filepath = log_filepath
         self.model_set = model_set
         self.omp = omp
         self.leaf_blocks = leaf_blocks
-        self.mpi_ranks = mpi_ranks
+        self.mpi = mpi
         self.table = logfile.extract_table(filepath=self.log_filepath)
