@@ -12,13 +12,13 @@ class ModelSet:
     """A collection of performace-scaling FLASH models
 
     Two modes:
-        - ModelSet('strong', model_set, omp_threads, leaf_blocks, mpi_ranks)
-        - ModelSet('weak', model_set, omp_threads, leaf_blocks_per_Rank, mpi_ranks)
+        - ModelSet('strong', model_set, omp, leaf_blocks, mpi_ranks)
+        - ModelSet('weak', model_set, omp, leaf_blocks_per_Rank, mpi_ranks)
     """
     def __init__(self,
                  scaling_type,
                  model_set,
-                 omp_threads=None,
+                 omp=None,
                  leaf_blocks=None,
                  leaf_blocks_per_rank=None,
                  mpi_ranks=None,
@@ -38,8 +38,8 @@ class ModelSet:
             type of scaling test
         model_set : str
             name of model set/collection
-        omp_threads : [int] or int
-            OpenMP threads used
+        omp : [int] or int
+            number of OpenMP threads used
         leaf_blocks : [int] or int
             (strong only) list of total leaf blocks
         leaf_blocks_per_rank : [int] or int
@@ -60,7 +60,7 @@ class ModelSet:
         """
         self.scaling_type = scaling_type
         self.model_set = model_set
-        self.omp_threads = omp_threads
+        self.omp = omp
         self.mpi_ranks = mpi_ranks
         self.leaf_blocks_per_rank = leaf_blocks_per_rank
         self.leaf_blocks = leaf_blocks
@@ -112,7 +112,7 @@ class ModelSet:
     def expand_sequences(self):
         """Expand sequence attributes
         """
-        self.expand_omp_threads()
+        self.expand_omp()
         self.expand_mpi_ranks()
 
         if self.scaling_type == 'weak':
@@ -123,28 +123,28 @@ class ModelSet:
             self.leaf_blocks_per_max_ranks = tools.ensure_sequence(
                                                         self.leaf_blocks_per_max_ranks)
 
-    def expand_omp_threads(self):
-        """Expand omp_threads sequence
+    def expand_omp(self):
+        """Expand omp sequence
         """
-        if self.omp_threads is None:
+        if self.omp is None:
             max_threads = int(self.max_cores / 2)
-            self.omp_threads = tools.expand_power_sequence(largest=max_threads)
-        elif isinstance(self.omp_threads, int):
-            self.omp_threads = tools.expand_power_sequence(largest=self.omp_threads)
+            self.omp = tools.expand_power_sequence(largest=max_threads)
+        elif isinstance(self.omp, int):
+            self.omp = tools.expand_power_sequence(largest=self.omp)
 
     def expand_mpi_ranks(self):
         """Expand mpi_ranks sequences
         """
         mpi_ranks = {}
-        for threads in self.omp_threads:
-            max_ranks = int(self.max_cores / threads)
+        for omp in self.omp:
+            max_ranks = int(self.max_cores / omp)
 
             if self.mpi_ranks is None:
-                mpi_ranks[threads] = tools.expand_power_sequence(largest=max_ranks)
+                mpi_ranks[omp] = tools.expand_power_sequence(largest=max_ranks)
             elif isinstance(self.mpi_ranks, int):
-                mpi_ranks[threads] = tools.expand_power_sequence(largest=self.mpi_ranks)
+                mpi_ranks[omp] = tools.expand_power_sequence(largest=self.mpi_ranks)
             else:
-                mpi_ranks[threads] = self.mpi_ranks
+                mpi_ranks[omp] = self.mpi_ranks
 
         self.mpi_ranks = mpi_ranks
 
@@ -152,33 +152,33 @@ class ModelSet:
         """Expand leaf_blocks sequences
         """
         leaf_blocks = {}
-        for threads in self.omp_threads:
-            max_ranks = int(self.max_cores / threads)
+        for omp in self.omp:
+            max_ranks = int(self.max_cores / omp)
 
             if self.leaf_blocks is None:
-                leaf_blocks[threads] = max_ranks * np.array(self.leaf_blocks_per_max_ranks)
+                leaf_blocks[omp] = max_ranks * np.array(self.leaf_blocks_per_max_ranks)
             else:
-                leaf_blocks[threads] = tools.ensure_sequence(self.leaf_blocks)
+                leaf_blocks[omp] = tools.ensure_sequence(self.leaf_blocks)
 
         self.leaf_blocks = leaf_blocks
 
     def load_models(self):
         """Load all model timing data
         """
-        for threads in self.omp_threads:
-            self.models[threads] = {}
-            leaf_sequence = self.get_leaf_sequence(omp_threads=threads)
+        for omp in self.omp:
+            self.models[omp] = {}
+            leaf_sequence = self.get_leaf_sequence(omp=omp)
 
             for leaf in leaf_sequence:
-                self.models[threads][leaf] = {}
-                leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp_threads=threads)
+                self.models[omp][leaf] = {}
+                leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
 
-                for i, ranks in enumerate(self.mpi_ranks[threads]):
-                    print(f'\rLoading {threads}_{leaf_blocks[i]}_{ranks}', end=10*' ')
+                for i, ranks in enumerate(self.mpi_ranks[omp]):
+                    print(f'\rLoading {omp}_{leaf_blocks[i]}_{ranks}', end=10*' ')
 
-                    self.models[threads][leaf][ranks] = model.Model(
+                    self.models[omp][leaf][ranks] = model.Model(
                                                         model_set=self.model_set,
-                                                        omp_threads=threads,
+                                                        omp=omp,
                                                         leaf_blocks=leaf_blocks[i],
                                                         mpi_ranks=ranks,
                                                         log_basename=self.log_basename)
@@ -197,13 +197,12 @@ class ModelSet:
         for key, func in funcs.items():
             self.data[key] = {}
 
-            for omp_threads in self.omp_threads:
-                self.data[key][omp_threads] = {}
-                leaf_sequence = self.get_leaf_sequence(omp_threads)
+            for omp in self.omp:
+                self.data[key][omp] = {}
+                leaf_sequence = self.get_leaf_sequence(omp)
 
                 for leaf in leaf_sequence:
-                    self.data[key][omp_threads][leaf] = func(omp_threads=omp_threads,
-                                                             leaf=leaf, unit=unit)
+                    self.data[key][omp][leaf] = func(omp=omp, leaf=leaf, unit=unit)
 
     def extract_xarray(self):
         """Extract multi-dimensional table of model timing data
@@ -211,7 +210,7 @@ class ModelSet:
         print('Extracting performance data')
         omp_dict = {}
 
-        for omp_threads, omp_set in self.models.items():
+        for omp, omp_set in self.models.items():
             leaf_dict = {}
 
             omp_set = self.models[1]
@@ -227,21 +226,21 @@ class ModelSet:
 
             omp_xr = xr.concat(leaf_dict.values(), dim='leaf')
             omp_xr.coords['leaf'] = list(leaf_dict.keys())
-            omp_dict[omp_threads] = omp_xr
+            omp_dict[omp] = omp_xr
 
-        full_xr = xr.concat(omp_dict.values(), dim='omp_threads')
-        full_xr.coords['omp_threads'] = list(omp_dict.keys())
+        full_xr = xr.concat(omp_dict.values(), dim='omp')
+        full_xr.coords['omp'] = list(omp_dict.keys())
 
         return full_xr
 
     # =======================================================
     #                      Analysis
     # =======================================================
-    def get_times(self, omp_threads, leaf, unit=None):
+    def get_times(self, omp, leaf, unit=None):
         """Return array of runtimes versus MPI ranks
         """
         times = []
-        models = self.models[omp_threads][leaf]
+        models = self.models[omp][leaf]
 
         if unit is None:
             unit = self.config['params']['unit']
@@ -255,72 +254,72 @@ class ModelSet:
 
         return np.array(times)
 
-    def get_zupcs(self, omp_threads, leaf, unit=None):
+    def get_zupcs(self, omp, leaf, unit=None):
         """Return array of Zone Updates Per Core Second, versus MPI ranks
         """
-        times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
-        leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp_threads=omp_threads)
+        times = self.get_times(omp=omp, unit=unit, leaf=leaf)
+        leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
 
         zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
-        core_seconds = omp_threads * self.mpi_ranks[omp_threads] * times
+        core_seconds = omp * self.mpi_ranks[omp] * times
         zupcs = zone_updates / core_seconds
 
         return zupcs
 
-    def get_efficiency(self, omp_threads, leaf, unit=None):
+    def get_efficiency(self, omp, leaf, unit=None):
         """Return array of scaling efficiency versus MPI ranks
         """
-        times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
+        times = self.get_times(omp=omp, unit=unit, leaf=leaf)
 
-        eff_factor = {'strong': self.mpi_ranks[omp_threads],
+        eff_factor = {'strong': self.mpi_ranks[omp],
                       'weak': 1.0}.get(self.scaling_type)
 
         efficiency = 100 * times[0] / (eff_factor * times)
 
         return efficiency
 
-    def get_speedup(self, omp_threads, leaf, unit):
+    def get_speedup(self, omp, leaf, unit):
         """Return array of speedup versus MPI ranks
         """
-        times = self.get_times(omp_threads=omp_threads, unit=unit, leaf=leaf)
+        times = self.get_times(omp=omp, unit=unit, leaf=leaf)
         speedup = times[0] / times
 
         return speedup
 
-    def get_model_table(self, omp_threads, leaf, mpi_ranks):
+    def get_model_table(self, omp, leaf, mpi_ranks):
         """Return timing table of specific model
         """
-        m = self.models[omp_threads][leaf][mpi_ranks]
+        m = self.models[omp][leaf][mpi_ranks]
         return m.table
 
-    def get_leaf_sequence(self, omp_threads):
+    def get_leaf_sequence(self, omp):
         """Return sequence of leaf variable according to scaling_type
         """
         if self.scaling_type == 'strong':
-            return self.leaf_blocks[omp_threads]
+            return self.leaf_blocks[omp]
         else:
             return self.leaf_blocks_per_rank
 
-    def get_leaf_blocks(self, leaf, omp_threads):
+    def get_leaf_blocks(self, leaf, omp):
         """Return array of leaf_blocks versus MPI ranks
         """
         if self.scaling_type == 'strong':
-            n_runs = len(self.mpi_ranks[omp_threads])
+            n_runs = len(self.mpi_ranks[omp])
             return np.full(n_runs, leaf)
         else:
-            return leaf * self.mpi_ranks[omp_threads]
+            return leaf * self.mpi_ranks[omp]
 
     # =======================================================
     #                      Plotting
     # =======================================================
-    def plot_multiple(self, omp_threads=None, plots=None,
+    def plot_multiple(self, omp=None, plots=None,
                       unit=None, x_scale=None, y_scale=None,
                       sub_figsize=(5, 3)):
         """Plot multiple sets of models
 
         parameters
         ----------
-        omp_threads : [int]
+        omp : [int]
         plots : [str]
             types of plots
         unit : str
@@ -328,40 +327,42 @@ class ModelSet:
         y_scale : str
         sub_figsize : [width, height]
         """
-        if omp_threads is None:
-            omp_threads = self.omp_threads
+        if omp is None:
+            omp = self.omp
+        else:
+            omp = tools.ensure_sequence(omp)
         if plots is None:
             plots = self.config['plot']['multiplot'][self.scaling_type]
 
-        nrows = len(omp_threads)
+        nrows = len(omp)
         ncols = len(plots)
         fig, axes = plt.subplots(nrows, ncols, squeeze=False,
                                  figsize=(sub_figsize[0]*ncols, sub_figsize[1]*nrows))
 
-        for i, threads in enumerate(omp_threads):
+        for i, threads in enumerate(omp):
             for j, plot in enumerate(plots):
                 ax = axes[i, j]
-                self.plot(omp_threads=threads, y_var=plot, ax=ax,
+                self.plot(omp=threads, y_var=plot, ax=ax,
                           unit=unit, data_only=True)
 
-                self._set_ax_subplot(axes=axes, row=i, col=j, omp_threads=threads,
+                self._set_ax_subplot(axes=axes, row=i, col=j, omp=threads,
                                      x_var='mpi_ranks', y_var=plot,
                                      x_scale=x_scale, y_scale=y_scale)
         plt.tight_layout()
         return fig
 
-    def plot(self, omp_threads, y_var, unit=None, x_scale=None,
+    def plot(self, omp, y_var, unit=None, x_scale=None,
              ax=None, data_only=False):
         """Plot scaling
         """
         fig, ax = self._setup_fig_ax(ax=ax)
-        x = self.mpi_ranks[omp_threads]
+        x = self.mpi_ranks[omp]
         last_rank = x[-1]
 
-        leaf_sequence = self.get_leaf_sequence(omp_threads=omp_threads)
+        leaf_sequence = self.get_leaf_sequence(omp=omp)
 
         for leaf in leaf_sequence:
-            y = self.data[y_var][omp_threads][leaf]
+            y = self.data[y_var][omp][leaf]
             ax.plot(x, y, marker='o', label=leaf)
 
         if y_var == 'efficiency':
@@ -369,7 +370,7 @@ class ModelSet:
         elif y_var == 'speedup':
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
-        self._set_ax(ax=ax, x_var='mpi_ranks', y_var=y_var, x=x, omp_threads=omp_threads,
+        self._set_ax(ax=ax, x_var='mpi_ranks', y_var=y_var, x=x, omp=omp,
                      x_scale=x_scale, data_only=data_only)
 
         return fig
@@ -390,7 +391,7 @@ class ModelSet:
 
         return fig, ax
 
-    def _set_ax(self, ax, x, x_var, y_var, omp_threads,
+    def _set_ax(self, ax, x, x_var, y_var, omp,
                 x_scale=None, y_scale=None,
                 data_only=False):
         """Set axis properties
@@ -402,9 +403,9 @@ class ModelSet:
             self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                                x_scale=x_scale, y_scale=y_scale)
             self._set_ax_xticks(ax=ax, x=x)
-            self._set_ax_text(ax=ax, omp_threads=omp_threads)
+            self._set_ax_text(ax=ax, omp=omp)
 
-    def _set_ax_subplot(self, axes, x_var, y_var, row, col, omp_threads,
+    def _set_ax_subplot(self, axes, x_var, y_var, row, col, omp,
                         x_scale, y_scale):
         """Set axis properties for subplot (see plot_multiple)
         """
@@ -413,7 +414,7 @@ class ModelSet:
         ncols = axes.shape[1]
 
         if col == 0:
-            self._set_ax_text(ax=ax, omp_threads=omp_threads)
+            self._set_ax_text(ax=ax, omp=omp)
             if self.scaling_type == 'strong':
                 self._set_ax_legend(ax=ax)
 
@@ -429,7 +430,7 @@ class ModelSet:
 
         self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                            x_scale=x_scale, y_scale=y_scale)
-        self._set_ax_xticks(ax=ax, x=self.mpi_ranks[omp_threads])
+        self._set_ax_xticks(ax=ax, x=self.mpi_ranks[omp])
 
     def _set_ax_legend(self, ax):
         """Set axis legend
@@ -443,10 +444,10 @@ class ModelSet:
         """
         ax.set_title(f'{self.model_set}')
 
-    def _set_ax_text(self, ax, omp_threads):
+    def _set_ax_text(self, ax, omp):
         """Set axis text
         """
-        ax.text(0.95, 0.05, f'OMP threads = {omp_threads}',
+        ax.text(0.95, 0.05, f'OMP threads = {omp}',
                 verticalalignment='bottom', horizontalalignment='right',
                 fontsize=12, transform=ax.transAxes)
 
