@@ -19,11 +19,10 @@ class ModelSet:
                  scaling_type,
                  model_set,
                  omp=None,
-                 leaf_blocks=None,
-                 leaf_blocks_per_rank=None,
                  mpi=None,
+                 leaf_per_rank=None,
+                 leaf_per_max_rank=None,
                  config=None,
-                 leaf_blocks_per_max_ranks=None,
                  log_basename='sod3d',
                  max_cores=128,
                  block_size=12,
@@ -40,14 +39,12 @@ class ModelSet:
             name of model set/collection
         omp : [int] or int
             number of OpenMP threads used
-        leaf_blocks : [int] or int
-            (strong only) list of total leaf blocks
-        leaf_blocks_per_rank : [int] or int
-            (weak only) list of leaf blocks per MPI rank
+        leaf_per_max_rank : [int] or int
+            leaf blocks per max mpi rank (strong only)
+        leaf_per_rank : [int] or int
+             leaf blocks per mpi rank (weak only)
         mpi : [int] or int
-            list of MPI ranks used
-        leaf_blocks_per_max_ranks : [int]
-            (strong only) number of leaf blocks per maximum rank number
+            number of MPI ranks used
         log_basename : str
             Prefix used in logfile name, e.g. 'sod3d' for 'sod3d_16.log`
         max_cores : int
@@ -62,9 +59,9 @@ class ModelSet:
         self.model_set = model_set
         self.omp = omp
         self.mpi = mpi
-        self.leaf_blocks_per_rank = leaf_blocks_per_rank
-        self.leaf_blocks = leaf_blocks
-        self.leaf_blocks_per_max_ranks = leaf_blocks_per_max_ranks
+        self.leaf = None
+        self.leaf_per_max_rank = leaf_per_max_rank
+        self.leaf_per_rank = leaf_per_rank
         self.max_cores = max_cores
         self.log_basename = log_basename
         self.block_size = block_size
@@ -102,26 +99,20 @@ class ModelSet:
 
         self.config = config_dict
 
-        if (self.scaling_type == 'weak') and (self.leaf_blocks_per_rank is None):
-            self.leaf_blocks_per_rank = self.config['params']['leaf_blocks_per_rank']
+        if self.scaling_type == 'strong':
+            if self.leaf_per_max_rank is None:
+                self.leaf_per_max_rank = self.config['params']['leaf_per_max_ranks']
 
-        if (self.scaling_type == 'strong') and (self.leaf_blocks_per_max_ranks is None):
-            self.leaf_blocks_per_max_ranks = self.config['params'][
-                                                            'leaf_blocks_per_max_ranks']
+        if self.scaling_type == 'weak':
+            if self.leaf_per_rank is None:
+                self.leaf_per_rank = self.config['params']['leaf_per_rank']
 
     def expand_sequences(self):
-        """Expand sequence attributes
+        """Expand all sequence attributes
         """
         self.expand_omp()
         self.expand_mpi()
-
-        if self.scaling_type == 'weak':
-            self.leaf_blocks_per_rank = tools.ensure_sequence(self.leaf_blocks_per_rank)
-
-        elif self.scaling_type == 'strong':
-            self.expand_leaf_blocks()
-            self.leaf_blocks_per_max_ranks = tools.ensure_sequence(
-                                                        self.leaf_blocks_per_max_ranks)
+        self.expand_leaf()
 
     def expand_omp(self):
         """Expand omp sequence
@@ -133,7 +124,7 @@ class ModelSet:
             self.omp = tools.expand_power_sequence(largest=self.omp)
 
     def expand_mpi(self):
-        """Expand mpi sequences
+        """Expand mpi sequences for each omp
         """
         mpi = {}
         for omp in self.omp:
@@ -148,28 +139,26 @@ class ModelSet:
 
         self.mpi = mpi
 
-    def expand_leaf_blocks(self):
-        """Expand leaf_blocks sequences
+    def expand_leaf(self):
+        """Expand leaf sequences for each omp
         """
-        leaf_blocks = {}
+        self.leaf = {}
+
         for omp in self.omp:
-            max_ranks = int(self.max_cores / omp)
+            if self.scaling_type == 'strong':
+                max_ranks = int(self.max_cores / omp)
+                self.leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
 
-            if self.leaf_blocks is None:
-                leaf_blocks[omp] = max_ranks * np.array(self.leaf_blocks_per_max_ranks)
-            else:
-                leaf_blocks[omp] = tools.ensure_sequence(self.leaf_blocks)
-
-        self.leaf_blocks = leaf_blocks
+            elif self.scaling_type == 'weak':
+                self.leaf[omp] = np.array(self.leaf_per_rank)
 
     def load_models(self):
         """Load all model timing data
         """
         for omp in self.omp:
             self.models[omp] = {}
-            leaf_sequence = self.get_leaf_sequence(omp=omp)
 
-            for leaf in leaf_sequence:
+            for leaf in self.leaf[omp]:
                 self.models[omp][leaf] = {}
                 leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
 
@@ -199,9 +188,8 @@ class ModelSet:
 
             for omp in self.omp:
                 self.data[key][omp] = {}
-                leaf_sequence = self.get_leaf_sequence(omp)
 
-                for leaf in leaf_sequence:
+                for leaf in self.leaf[omp]:
                     self.data[key][omp][leaf] = func(omp=omp, leaf=leaf, unit=unit)
 
     def extract_xarray(self):
@@ -255,7 +243,7 @@ class ModelSet:
         return np.array(times)
 
     def get_zupcs(self, omp, leaf, unit=None):
-        """Return array of Zone Updates Per Core Second, versus MPI ranks
+        """Return array of Zone Updates Per Core Second, versus mpi ranks
         """
         times = self.get_times(omp=omp, unit=unit, leaf=leaf)
         leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
@@ -292,21 +280,13 @@ class ModelSet:
         m = self.models[omp][leaf][mpi]
         return m.table
 
-    def get_leaf_sequence(self, omp):
-        """Return sequence of leaf variable according to scaling_type
-        """
-        if self.scaling_type == 'strong':
-            return self.leaf_blocks[omp]
-        else:
-            return self.leaf_blocks_per_rank
-
     def get_leaf_blocks(self, leaf, omp):
-        """Return array of leaf_blocks versus MPI ranks
+        """Return array of total leaf blocks versus mpi ranks for given omp
         """
         if self.scaling_type == 'strong':
-            n_runs = len(self.mpi[omp])
-            return np.full(n_runs, leaf)
-        else:
+            return np.full_like(self.mpi[omp], leaf)
+
+        elif self.scaling_type == 'weak':
             return leaf * self.mpi[omp]
 
     # =======================================================
@@ -359,9 +339,7 @@ class ModelSet:
         x = self.mpi[omp]
         last_rank = x[-1]
 
-        leaf_sequence = self.get_leaf_sequence(omp=omp)
-
-        for leaf in leaf_sequence:
+        for leaf in self.leaf[omp]:
             y = self.data[y_var][omp][leaf]
             ax.plot(x, y, marker='o', label=leaf)
 
