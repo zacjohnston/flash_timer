@@ -1,4 +1,5 @@
 import numpy as np
+import xarray as xr
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 
@@ -207,6 +208,35 @@ class ModelSet:
                 for leaf in leaf_sequence:
                     self.data[key][omp_threads][leaf] = func(omp_threads=omp_threads,
                                                              leaf=leaf, unit=unit)
+
+    def extract_xarray(self):
+        """Extract multi-dimensional table of model timing data
+        """
+        print('Extracting performance data')
+        omp_dict = {}
+
+        for omp_threads, omp_set in self.models.items():
+            leaf_dict = {}
+
+            omp_set = self.models[1]
+            for leaf, leaf_set in omp_set.items():
+                mpi_dict = {}
+
+                for mpi_ranks, m in leaf_set.items():
+                    mpi_dict[mpi_ranks] = m.table.to_xarray()
+
+                leaf_xr = xr.concat(mpi_dict.values(), dim='mpi_ranks')
+                leaf_xr.coords['mpi_ranks'] = list(mpi_dict.keys())
+                leaf_dict[leaf] = leaf_xr
+
+            omp_xr = xr.concat(leaf_dict.values(), dim='leaf')
+            omp_xr.coords['leaf'] = list(leaf_dict.keys())
+            omp_dict[omp_threads] = omp_xr
+
+        full_xr = xr.concat(omp_dict.values(), dim='omp_threads')
+        full_xr.coords['omp_threads'] = list(omp_dict.keys())
+
+        return full_xr
 
     # =======================================================
     #                      Analysis
