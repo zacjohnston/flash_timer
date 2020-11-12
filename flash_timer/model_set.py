@@ -62,6 +62,9 @@ class ModelSet:
         self.model_set = model_set
         self.omp_threads = omp_threads
         self.mpi_ranks = mpi_ranks
+        self.leaf_blocks_per_rank = leaf_blocks_per_rank
+        self.leaf_blocks = leaf_blocks
+        self.leaf_blocks_per_max_ranks = leaf_blocks_per_max_ranks
         self.max_cores = max_cores
         self.log_basename = log_basename
         self.block_size = block_size
@@ -70,16 +73,8 @@ class ModelSet:
         self.models = {}
         self.data = {}
 
-        if self.scaling_type == 'weak':
-            self.leaf_blocks_per_rank = leaf_blocks_per_rank
-            self.leaf_blocks = None
-            self.leaf_blocks_per_max_ranks = None
-        elif self.scaling_type == 'strong':
-            self.leaf_blocks_per_rank = None
-            self.leaf_blocks = leaf_blocks
-            self.leaf_blocks_per_max_ranks = leaf_blocks_per_max_ranks
-        else:
-            raise ValueError("scaling_type must be 'strong' or 'weak'")
+        if self.scaling_type not in ['strong', 'weak']:
+            raise ValueError(f"scaling_type='{scaling_type}', must be 'strong' or 'weak'")
 
         self.config = None
         self.load_config(config=config)
@@ -107,10 +102,12 @@ class ModelSet:
 
         self.config = config_dict
 
-        if self.leaf_blocks_per_rank is None:
+        if (self.scaling_type == 'weak') and (self.leaf_blocks_per_rank is None):
             self.leaf_blocks_per_rank = self.config['params']['leaf_blocks_per_rank']
-        if self.leaf_blocks_per_max_ranks is None:
-            self.leaf_blocks_per_max_ranks = self.config['params']['leaf_blocks_per_max_ranks']
+
+        if (self.scaling_type == 'strong') and (self.leaf_blocks_per_max_ranks is None):
+            self.leaf_blocks_per_max_ranks = self.config['params'][
+                                                            'leaf_blocks_per_max_ranks']
 
     def expand_sequences(self):
         """Expand sequence attributes
@@ -184,8 +181,7 @@ class ModelSet:
                                                         omp_threads=threads,
                                                         leaf_blocks=leaf_blocks[i],
                                                         mpi_ranks=ranks,
-                                                        log_basename=self.log_basename
-                                                        )
+                                                        log_basename=self.log_basename)
         print()
 
     def extract_data(self, unit):
