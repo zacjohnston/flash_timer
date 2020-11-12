@@ -11,9 +11,9 @@ from . import tools
 class ModelSet:
     """A collection of performace-scaling FLASH models
 
-    Two modes:
-        - ModelSet('strong', model_set, omp, leaf_blocks, mpi)
-        - ModelSet('weak', model_set, omp, leaf_blocks_per_Rank, mpi)
+    Two scaling modes:
+        - ModelSet('strong', model_set, omp, mpi, leaf_per_max_rank)
+        - ModelSet('weak',   model_set, omp, mpi, leaf_per_rank)
     """
     def __init__(self,
                  scaling_type,
@@ -163,14 +163,14 @@ class ModelSet:
                 self.models[omp][leaf] = {}
                 leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
 
-                for i, ranks in enumerate(self.mpi[omp]):
-                    print(f'\rLoading {omp}_{leaf_blocks[i]}_{ranks}', end=10*' ')
+                for i, mpi in enumerate(self.mpi[omp]):
+                    print(f'\rLoading {omp}_{leaf_blocks[i]}_{mpi}', end=10*' ')
 
-                    self.models[omp][leaf][ranks] = model.Model(
+                    self.models[omp][leaf][mpi] = model.Model(
                                                         model_set=self.model_set,
                                                         omp=omp,
                                                         leaf_blocks=leaf_blocks[i],
-                                                        mpi=ranks,
+                                                        mpi=mpi,
                                                         log_basename=self.log_basename)
         print()
 
@@ -226,19 +226,15 @@ class ModelSet:
     #                      Analysis
     # =======================================================
     def get_times(self, omp, leaf, unit=None):
-        """Return array of runtimes versus MPI ranks
+        """Return array of runtimes versus mpi ranks
         """
         times = []
-        models = self.models[omp][leaf]
 
         if unit is None:
             unit = self.config['params']['unit']
 
-        for ranks, m in models.items():
-            t = float(m.table.loc[unit, 'avg'])
-            # t = float(m.table.loc[unit, 'avg'][1])
-            # t = float(m.table.loc[unit, 'tot'])
-            # t = float(m.table.loc[unit, 'tot'][1])
+        for mod in self.models[omp][leaf].values():
+            t = float(mod.table.loc[unit, 'avg'])
             times += [t]
 
         return np.array(times)
@@ -312,6 +308,7 @@ class ModelSet:
             omp = self.omp
         else:
             omp = tools.ensure_sequence(omp)
+
         if y_vars is None:
             y_vars = self.config['plot']['multiplot'][self.scaling_type]
 
