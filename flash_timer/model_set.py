@@ -120,6 +120,7 @@ class ModelSet:
         if self.omp is None:
             max_threads = int(self.max_cores / 2)
             self.omp = tools.expand_power_sequence(largest=max_threads)
+
         elif isinstance(self.omp, int):
             self.omp = tools.expand_power_sequence(largest=self.omp)
 
@@ -292,7 +293,7 @@ class ModelSet:
     # =======================================================
     #                      Plotting
     # =======================================================
-    def plot_multiple(self, omp=None, plots=None,
+    def plot_multiple(self, omp=None, y_vars=None,
                       unit=None, x_scale=None, y_scale=None,
                       sub_figsize=(5, 3)):
         """Plot multiple sets of models
@@ -300,7 +301,7 @@ class ModelSet:
         parameters
         ----------
         omp : [int]
-        plots : [str]
+        y_vars : [str]
             types of plots
         unit : str
         x_scale : str
@@ -311,22 +312,22 @@ class ModelSet:
             omp = self.omp
         else:
             omp = tools.ensure_sequence(omp)
-        if plots is None:
-            plots = self.config['plot']['multiplot'][self.scaling_type]
+        if y_vars is None:
+            y_vars = self.config['plot']['multiplot'][self.scaling_type]
 
         nrows = len(omp)
-        ncols = len(plots)
+        ncols = len(y_vars)
         fig, axes = plt.subplots(nrows, ncols, squeeze=False,
                                  figsize=(sub_figsize[0]*ncols, sub_figsize[1]*nrows))
 
-        for i, threads in enumerate(omp):
-            for j, plot in enumerate(plots):
+        for i, omp_threads in enumerate(omp):
+            for j, y_var in enumerate(y_vars):
                 ax = axes[i, j]
-                self.plot(omp=threads, y_var=plot, ax=ax,
+                self.plot(omp=omp_threads, y_var=y_var, ax=ax,
                           unit=unit, data_only=True)
 
-                self._set_ax_subplot(axes=axes, row=i, col=j, omp=threads,
-                                     x_var='mpi', y_var=plot,
+                self._set_ax_subplot(axes=axes, row=i, col=j, omp=omp_threads,
+                                     x_var='mpi', y_var=y_vars,
                                      x_scale=x_scale, y_scale=y_scale)
         plt.tight_layout()
         return fig
