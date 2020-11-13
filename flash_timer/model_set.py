@@ -287,7 +287,7 @@ class ModelSet:
         elif self.scaling_type == 'weak':
             return leaf * self.mpi[omp]
 
-    def select_data(self, omp, leaf, unit=None, column=None):
+    def select_data(self, leaf, omp=None, mpi=None, unit=None, column=None):
         """Return subset of timing data versus mpi ranks
 
         parameters
@@ -302,8 +302,12 @@ class ModelSet:
         if column is None:
             column = 'avg'
 
-        data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
-        return data.dropna('mpi')
+        if mpi is None:
+            data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
+            return data.dropna('mpi')
+        else:
+            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[column]
+            return data.dropna('omp')
 
     # =======================================================
     #                      Plotting
