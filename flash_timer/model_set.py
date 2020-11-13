@@ -370,7 +370,7 @@ class ModelSet:
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
         self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
-                     x_scale=x_scale, data_only=data_only)
+                     x_scale=x_scale, data_only=data_only, fixed_var='mpi')
 
         return fig
 
@@ -392,7 +392,22 @@ class ModelSet:
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
         self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
-                     x_scale=x_scale, data_only=data_only)
+                     x_scale=x_scale, data_only=data_only, fixed_var='mpi')
+
+        return fig
+
+    def plot_omp(self, mpi, leaf, y_var, unit=None, x_scale=None,
+                 ax=None, data_only=False, column='avg'):
+        """Plot scaling
+        """
+        fig, ax = self._setup_fig_ax(ax=ax)
+        y = self.select_data(mpi=mpi, leaf=leaf, unit=unit, column=column)
+        x = y.omp
+
+        ax.plot(x, y, marker='o', label=leaf)
+
+        self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=x, omp=mpi,
+                     x_scale=x_scale, data_only=data_only, fixed_var='mpi')
 
         return fig
 
@@ -412,9 +427,8 @@ class ModelSet:
 
         return fig, ax
 
-    def _set_ax(self, ax, x, x_var, y_var, omp,
-                x_scale=None, y_scale=None,
-                data_only=False):
+    def _set_ax(self, ax, x, x_var, y_var, omp, fixed_var,
+                x_scale=None, y_scale=None, data_only=False):
         """Set axis properties
         """
         if not data_only:
@@ -424,7 +438,7 @@ class ModelSet:
             self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                                x_scale=x_scale, y_scale=y_scale)
             self._set_ax_xticks(ax=ax, x=x)
-            self._set_ax_text(ax=ax, omp=omp)
+            self._set_ax_text(ax=ax, omp=omp, fixed_var=fixed_var)
 
     def _set_ax_subplot(self, axes, x_var, y_var, row, col, omp,
                         x_scale, y_scale):
@@ -435,7 +449,7 @@ class ModelSet:
         ncols = axes.shape[1]
 
         if col == 0:
-            self._set_ax_text(ax=ax, omp=omp)
+            self._set_ax_text(ax=ax, omp=omp, fixed_var='mpi')
             if self.scaling_type == 'strong':
                 self._set_ax_legend(ax=ax)
 
@@ -465,10 +479,11 @@ class ModelSet:
         """
         ax.set_title(f'{self.model_set}')
 
-    def _set_ax_text(self, ax, omp):
+    def _set_ax_text(self, ax, omp, fixed_var):
         """Set axis text
         """
-        ax.text(0.5, 0.95, f'OMP threads = {omp}',
+        label = self.config['plot']['labels'].get(fixed_var, fixed_var)
+        ax.text(0.5, 0.95, f'{label} = {omp}',
                 verticalalignment='center', horizontalalignment='center',
                 fontsize=12, transform=ax.transAxes)
 
