@@ -287,6 +287,24 @@ class ModelSet:
         elif self.scaling_type == 'weak':
             return leaf * self.mpi[omp]
 
+    def select_data(self, omp, leaf, unit=None, column=None):
+        """Return subset of timing data versus mpi ranks
+
+        parameters
+        ----------
+        omp : int
+        leaf : int
+        unit : str
+        column : str
+        """
+        if unit is None:
+            unit = self.unit
+        if column is None:
+            column = 'avg'
+
+        data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
+        return data.dropna('mpi')
+
     # =======================================================
     #                      Plotting
     # =======================================================
@@ -340,6 +358,28 @@ class ModelSet:
 
         for leaf in self.leaf[omp]:
             y = self.data[y_var][omp][leaf]
+            ax.plot(x, y, marker='o', label=leaf)
+
+        if y_var == 'efficiency':
+            ax.plot([1, last_rank], [100, 100], ls='--', color='black')
+        elif y_var == 'speedup':
+            ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
+
+        self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
+                     x_scale=x_scale, data_only=data_only)
+
+        return fig
+
+    def plot_xarray(self, omp, y_var, unit=None, x_scale=None,
+                    ax=None, data_only=False, column='avg'):
+        """Plot scaling
+        """
+        fig, ax = self._setup_fig_ax(ax=ax)
+        x = self.mpi[omp]
+        last_rank = x[-1]
+
+        for leaf in self.leaf[omp]:
+            y = self.select_data(omp=omp, leaf=leaf, unit=unit, column=column)
             ax.plot(x, y, marker='o', label=leaf)
 
         if y_var == 'efficiency':
@@ -424,8 +464,8 @@ class ModelSet:
     def _set_ax_text(self, ax, omp):
         """Set axis text
         """
-        ax.text(0.95, 0.05, f'OMP threads = {omp}',
-                verticalalignment='bottom', horizontalalignment='right',
+        ax.text(0.5, 0.95, f'OMP threads = {omp}',
+                verticalalignment='center', horizontalalignment='center',
                 fontsize=12, transform=ax.transAxes)
 
     def _set_ax_labels(self, ax, x_var, y_var):
