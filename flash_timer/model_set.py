@@ -80,6 +80,8 @@ class ModelSet:
         self.load_models()
         self.extract_data(unit=self.unit)
 
+        self.x = self.extract_xarray()
+
     # =======================================================
     #                      Init/Loading
     # =======================================================
@@ -202,7 +204,6 @@ class ModelSet:
         for omp, omp_set in self.models.items():
             leaf_dict = {}
 
-            omp_set = self.models[1]
             for leaf, leaf_set in omp_set.items():
                 mpi_dict = {}
 
@@ -324,7 +325,7 @@ class ModelSet:
                           unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp=omp_threads,
-                                     x_var='mpi', y_var=y_vars,
+                                     x_var='mpi', y_var=y_var,
                                      x_scale=x_scale, y_scale=y_scale)
         plt.tight_layout()
         return fig
