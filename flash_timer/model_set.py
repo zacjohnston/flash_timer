@@ -22,6 +22,7 @@ class ModelSet:
                  mpi=None,
                  leaf_per_rank=None,
                  leaf_per_max_rank=None,
+                 leaf=None,
                  config=None,
                  log_basename='sod3d',
                  max_cores=128,
@@ -59,7 +60,7 @@ class ModelSet:
         self.model_set = model_set
         self.omp = omp
         self.mpi = mpi
-        self.leaf = None
+        self.leaf = leaf
         self.leaf_per_max_rank = leaf_per_max_rank
         self.leaf_per_rank = leaf_per_rank
         self.max_cores = max_cores
@@ -145,16 +146,21 @@ class ModelSet:
     def expand_leaf(self):
         """Expand leaf sequences for each omp
         """
-        self.leaf = {}
+        leaf = {}
 
         for omp in self.omp:
-            if self.scaling_type == 'strong':
-                max_ranks = int(self.max_cores / omp)
-                self.leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
+            if self.leaf is None:
+                if self.scaling_type == 'strong':
+                    max_ranks = int(self.max_cores / omp)
+                    leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
 
-            elif self.scaling_type == 'weak':
-                self.leaf[omp] = np.array(self.leaf_per_rank)
+                elif self.scaling_type == 'weak':
+                    leaf[omp] = np.array(self.leaf_per_rank)
+            else:
+                leaf[omp] = tools.ensure_sequence(self.leaf)
 
+        self.leaf = leaf
+        
     def load_models(self):
         """Load all model timing data
         """
