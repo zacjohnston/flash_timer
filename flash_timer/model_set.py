@@ -370,7 +370,7 @@ class ModelSet:
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
         self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
-                     x_scale=x_scale, data_only=data_only, fixed_var='mpi')
+                     x_scale=x_scale, data_only=data_only, fixed_var='omp')
 
         return fig
 
@@ -449,7 +449,7 @@ class ModelSet:
         ncols = axes.shape[1]
 
         if col == 0:
-            self._set_ax_text(ax=ax, omp=omp, fixed_var='mpi')
+            self._set_ax_text(ax=ax, omp=omp, fixed_var='omp')
             if self.scaling_type == 'strong':
                 self._set_ax_legend(ax=ax)
 
