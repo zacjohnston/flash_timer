@@ -160,7 +160,7 @@ class ModelSet:
                 leaf[omp] = tools.ensure_sequence(self.leaf)
 
         self.leaf = leaf
-        
+
     def load_models(self):
         """Load all model timing data
         """
@@ -299,6 +299,7 @@ class ModelSet:
         parameters
         ----------
         omp : int
+        mpi : int
         leaf : int
         unit : str
         column : str
@@ -309,8 +310,11 @@ class ModelSet:
             column = 'avg'
 
         if mpi is None:
-            data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
-            return data.dropna('mpi')
+            if omp is None:
+                raise ValueError("Must specify either 'omp' or 'mpi'")
+            else:
+                data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
+                return data.dropna('mpi')
         else:
             data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[column]
             return data.dropna('omp')
