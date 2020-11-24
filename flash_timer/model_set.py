@@ -420,17 +420,24 @@ class ModelSet:
 
         return fig
 
-    def plot_omp(self, mpi, leaf, y_var, unit=None, x_scale=None,
+    def plot_omp(self, mpi, y_var, unit=None, x_scale=None,
                  ax=None, data_only=False, column='avg'):
         """Plot scaling
         """
+        if unit is None:
+            unit = self.unit
+
         fig, ax = self._setup_fig_ax(ax=ax)
-        y = self.select_data(mpi=mpi, leaf=leaf, unit=unit, column=column)
-        x = y.omp
 
-        ax.plot(x, y, marker='o', label=leaf)
+        data = self.x.sel(mpi=mpi, unit=unit)[column]
 
-        self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=x, omp=mpi,
+        for leaf in data.leaf:
+            print(leaf)
+            y = data.sel(leaf=leaf).dropna('omp')
+            x = y.omp
+            ax.plot(x, y, marker='o', label=int(leaf))
+
+        self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=self.omp, omp=mpi,
                      x_scale=x_scale, data_only=data_only, fixed_var='mpi')
 
         return fig
