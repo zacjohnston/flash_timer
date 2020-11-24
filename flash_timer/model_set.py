@@ -229,6 +229,20 @@ class ModelSet:
 
         return full_xr
 
+    def extract_zupcs(self):
+        """Add ZUPCS to xarray table
+        """
+        if self.scaling_type == 'strong':
+            leaf_blocks = self.x.leaf
+        else:
+            leaf_blocks = self.x.leaf * self.x.mpi
+
+        zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
+        core_seconds = self.x.omp * self.x.mpi * self.x['avg']
+
+        zupcs = zone_updates / core_seconds
+        self.x['zupcs'] = zupcs
+
     # =======================================================
     #                      Analysis
     # =======================================================
