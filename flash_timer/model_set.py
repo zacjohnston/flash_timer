@@ -81,7 +81,9 @@ class ModelSet:
         self.load_models()
         self.extract_data(unit=self.unit)
 
-        self.x = self.extract_xarray()
+        self.x = None
+        self.extract_xarray()
+        self.extract_zupcs()
 
     # =======================================================
     #                      Init/Loading
@@ -227,7 +229,7 @@ class ModelSet:
         full_xr = xr.concat(omp_dict.values(), dim='omp')
         full_xr.coords['omp'] = list(omp_dict.keys())
 
-        return full_xr
+        self.x = full_xr
 
     def extract_zupcs(self):
         """Add ZUPCS to xarray table
@@ -367,7 +369,7 @@ class ModelSet:
         for i, omp_threads in enumerate(omp):
             for j, y_var in enumerate(y_vars):
                 ax = axes[i, j]
-                self.plot(omp=omp_threads, y_var=y_var, ax=ax,
+                self.plot_mpi(omp=omp_threads, y_var=y_var, ax=ax,
                           unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp=omp_threads,
@@ -376,7 +378,7 @@ class ModelSet:
         plt.tight_layout()
         return fig
 
-    def plot(self, omp, y_var, unit=None, x_scale=None,
+    def plot_mpi(self, omp, y_var, unit=None, x_scale=None,
              ax=None, data_only=False):
         """Plot scaling
         """
@@ -422,7 +424,7 @@ class ModelSet:
 
     def plot_omp(self, mpi, y_var, unit=None, x_scale=None,
                  ax=None, data_only=False, column='avg'):
-        """Plot scaling
+        """Plot OMP thread scaling
         """
         if unit is None:
             unit = self.unit
