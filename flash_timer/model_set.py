@@ -370,7 +370,7 @@ class ModelSet:
             for j, y_var in enumerate(y_vars):
                 ax = axes[i, j]
                 self.plot_mpi(omp=omp_threads, y_var=y_var, ax=ax,
-                          unit=unit, data_only=True)
+                              unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp=omp_threads,
                                      x_var='mpi', y_var=y_var,
@@ -379,7 +379,7 @@ class ModelSet:
         return fig
 
     def plot_mpi(self, omp, y_var, unit=None, x_scale=None,
-             ax=None, data_only=False):
+                 ax=None, data_only=False):
         """Plot scaling
         """
         fig, ax = self._setup_fig_ax(ax=ax)
@@ -387,7 +387,8 @@ class ModelSet:
         last_rank = x[-1]
 
         for leaf in self.leaf[omp]:
-            y = self.data[y_var][omp][leaf]
+            # y = self.data[y_var][omp][leaf]
+            y = self.select_data(leaf=leaf, omp=omp)
             ax.plot(x, y, marker='o', label=leaf)
 
         if y_var == 'efficiency':
