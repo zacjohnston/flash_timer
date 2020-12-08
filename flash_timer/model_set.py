@@ -415,8 +415,10 @@ class ModelSet:
         last_rank = x[-1]
 
         for leaf in self.leaf[omp]:
+            label = {False: leaf}.get(data_only)
             y = self.select_data(omp=omp, leaf=leaf, unit=unit, column=column)
-            ax.plot(x, y, marker='o', label=leaf)
+
+            ax.plot(x, y, marker='o', label=label)
 
         if y_var == 'efficiency':
             ax.plot([1, last_rank], [100, 100], ls='--', color='black')
@@ -429,7 +431,9 @@ class ModelSet:
         return fig
 
     def plot_omp(self, mpi, y_var, unit=None, x_scale=None,
-                 ax=None, data_only=False, column='avg'):
+                 ax=None, data_only=False, column='avg',
+                 marker='o',
+                 linestyle='-'):
         """Plot OMP thread scaling
         """
         if unit is None:
@@ -440,10 +444,11 @@ class ModelSet:
         data = self.x.sel(mpi=mpi, unit=unit)[column]
 
         for leaf in data.leaf:
-            print(leaf)
+            label = {False: int(leaf)}.get(data_only)
+
             y = data.sel(leaf=leaf).dropna('omp')
             x = y.omp
-            ax.plot(x, y, marker='o', label=int(leaf))
+            ax.plot(x, y, marker=marker, linestyle=linestyle, label=label)
 
         self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=self.omp, omp=mpi,
                      x_scale=x_scale, data_only=data_only, fixed_var='mpi')
