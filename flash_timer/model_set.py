@@ -516,7 +516,7 @@ class ModelSet:
     def _set_ax_title(self, ax):
         """Set axis title
         """
-        ax.set_title(f'{self.model_set}')
+        ax.set_title(f'{self.model_set}, unit={self.unit}')
 
     def _set_ax_text(self, ax, omp, fixed_var):
         """Set axis text
