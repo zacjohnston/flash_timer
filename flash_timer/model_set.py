@@ -20,9 +20,9 @@ class ModelSet:
                  model_set,
                  omp=None,
                  mpi=None,
-                 leaf=None,
                  leaf_per_rank=None,
                  leaf_per_max_rank=None,
+                 leaf=None,
                  config=None,
                  log_basename='sod3d',
                  max_cores=128,
@@ -40,12 +40,13 @@ class ModelSet:
             name of model set/collection
         omp : [int] or int
             number of OpenMP threads used
-        leaf : [int]
-            specify leaf blocks (if fixed across OMP threads)
         leaf_per_max_rank : [int] or int
             leaf blocks per max mpi rank (strong only)
         leaf_per_rank : [int] or int
              leaf blocks per mpi rank (weak only)
+        leaf : [int] or int
+            specify leaf blocks (if fixed across OMP threads)
+            overrides leaf_per_rank and leaf_per_max_rank
         mpi : [int] or int
             number of MPI ranks used
         log_basename : str
@@ -85,7 +86,9 @@ class ModelSet:
         self.load_models()
         self.extract_data(unit=self.unit)
 
-        self.x = self.extract_xarray()
+        self.x = None
+        self.extract_xarray()
+        self.extract_zupcs()
 
     # =======================================================
     #                      Init/Loading
@@ -153,15 +156,15 @@ class ModelSet:
         leaf = {}
 
         for omp in self.omp:
-            if self.scaling_type == 'strong':
-                if self.leaf is None:
+            if self.leaf is None:
+                if self.scaling_type == 'strong':
                     max_ranks = int(self.max_cores / omp)
                     leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
-                else:
-                    leaf[omp] = np.array(self.leaf)
 
-            elif self.scaling_type == 'weak':
-                leaf[omp] = np.array(self.leaf_per_rank)
+                elif self.scaling_type == 'weak':
+                    leaf[omp] = np.array(self.leaf_per_rank)
+            else:
+                leaf[omp] = tools.ensure_sequence(self.leaf)
 
         self.leaf = leaf
 
@@ -231,7 +234,21 @@ class ModelSet:
         full_xr = xr.concat(omp_dict.values(), dim='omp')
         full_xr.coords['omp'] = list(omp_dict.keys())
 
-        return full_xr
+        self.x = full_xr
+
+    def extract_zupcs(self):
+        """Add ZUPCS to xarray table
+        """
+        if self.scaling_type == 'strong':
+            leaf_blocks = self.x.leaf
+        else:
+            leaf_blocks = self.x.leaf * self.x.mpi
+
+        zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
+        core_seconds = self.x.omp * self.x.mpi * self.x['avg']
+
+        zupcs = zone_updates / core_seconds
+        self.x['zupcs'] = zupcs
 
     # =======================================================
     #                      Analysis
@@ -303,6 +320,7 @@ class ModelSet:
         parameters
         ----------
         omp : int
+        mpi : int
         leaf : int
         unit : str
         column : str
@@ -313,8 +331,11 @@ class ModelSet:
             column = 'avg'
 
         if mpi is None:
-            data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
-            return data.dropna('mpi')
+            if omp is None:
+                raise ValueError("Must specify either 'omp' or 'mpi'")
+            else:
+                data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
+                return data.dropna('mpi')
         else:
             data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[column]
             return data.dropna('omp')
@@ -353,8 +374,8 @@ class ModelSet:
         for i, omp_threads in enumerate(omp):
             for j, y_var in enumerate(y_vars):
                 ax = axes[i, j]
-                self.plot(omp=omp_threads, y_var=y_var, ax=ax,
-                          unit=unit, data_only=True)
+                self.plot_mpi(omp=omp_threads, y_var=y_var, ax=ax,
+                              unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp=omp_threads,
                                      x_var='mpi', y_var=y_var,
@@ -362,8 +383,8 @@ class ModelSet:
         plt.tight_layout()
         return fig
 
-    def plot(self, omp, y_var, unit=None, x_scale=None,
-             ax=None, data_only=False):
+    def plot_mpi(self, omp, y_var, unit=None, x_scale=None,
+                 ax=None, data_only=False):
         """Plot scaling
         """
         fig, ax = self._setup_fig_ax(ax=ax)
@@ -371,7 +392,8 @@ class ModelSet:
         last_rank = x[-1]
 
         for leaf in self.leaf[omp]:
-            y = self.data[y_var][omp][leaf]
+            # y = self.data[y_var][omp][leaf]
+            y = self.select_data(leaf=leaf, omp=omp)
             ax.plot(x, y, marker='o', label=leaf)
 
         if y_var == 'efficiency':
@@ -380,7 +402,7 @@ class ModelSet:
             ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
 
         self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
-                     x_scale=x_scale, data_only=data_only, fixed_var='mpi')
+                     x_scale=x_scale, data_only=data_only, fixed_var='omp')
 
         return fig
 
@@ -406,17 +428,24 @@ class ModelSet:
 
         return fig
 
-    def plot_omp(self, mpi, leaf, y_var, unit=None, x_scale=None,
+    def plot_omp(self, mpi, y_var, unit=None, x_scale=None,
                  ax=None, data_only=False, column='avg'):
-        """Plot scaling
+        """Plot OMP thread scaling
         """
+        if unit is None:
+            unit = self.unit
+
         fig, ax = self._setup_fig_ax(ax=ax)
-        y = self.select_data(mpi=mpi, leaf=leaf, unit=unit, column=column)
-        x = y.omp
 
-        ax.plot(x, y, marker='o', label=leaf)
+        data = self.x.sel(mpi=mpi, unit=unit)[column]
 
-        self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=x, omp=mpi,
+        for leaf in data.leaf:
+            print(leaf)
+            y = data.sel(leaf=leaf).dropna('omp')
+            x = y.omp
+            ax.plot(x, y, marker='o', label=int(leaf))
+
+        self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=self.omp, omp=mpi,
                      x_scale=x_scale, data_only=data_only, fixed_var='mpi')
 
         return fig

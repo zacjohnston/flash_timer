@@ -1,3 +1,3 @@
 # flash_timer
 
-Read timing data from FLASH models to test parallel scaling.
+Analyse timing data from FLASH `.log` files, for scaling performance~~~~ tests.
