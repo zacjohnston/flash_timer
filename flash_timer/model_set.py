@@ -20,6 +20,7 @@ class ModelSet:
                  model_set,
                  omp=None,
                  mpi=None,
+                 leaf=None,
                  leaf_per_rank=None,
                  leaf_per_max_rank=None,
                  config=None,
@@ -39,6 +40,8 @@ class ModelSet:
             name of model set/collection
         omp : [int] or int
             number of OpenMP threads used
+        leaf : [int]
+            specify leaf blocks (if fixed across OMP threads)
         leaf_per_max_rank : [int] or int
             leaf blocks per max mpi rank (strong only)
         leaf_per_rank : [int] or int
@@ -54,12 +57,14 @@ class ModelSet:
         config : str
             basename of config file, e.g. 'amd' for 'config/amd.ini'
             (defaults to 'default')
+        unit : str
+            which timing unit in .log table to read from
         """
         self.scaling_type = scaling_type
         self.model_set = model_set
         self.omp = omp
         self.mpi = mpi
-        self.leaf = None
+        self.leaf = leaf
         self.leaf_per_max_rank = leaf_per_max_rank
         self.leaf_per_rank = leaf_per_rank
         self.max_cores = max_cores
@@ -145,15 +150,20 @@ class ModelSet:
     def expand_leaf(self):
         """Expand leaf sequences for each omp
         """
-        self.leaf = {}
+        leaf = {}
 
         for omp in self.omp:
             if self.scaling_type == 'strong':
-                max_ranks = int(self.max_cores / omp)
-                self.leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
+                if self.leaf is None:
+                    max_ranks = int(self.max_cores / omp)
+                    leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
+                else:
+                    leaf[omp] = np.array(self.leaf)
 
             elif self.scaling_type == 'weak':
-                self.leaf[omp] = np.array(self.leaf_per_rank)
+                leaf[omp] = np.array(self.leaf_per_rank)
+
+        self.leaf = leaf
 
     def load_models(self):
         """Load all model timing data
@@ -449,7 +459,7 @@ class ModelSet:
         ncols = axes.shape[1]
 
         if col == 0:
-            self._set_ax_text(ax=ax, omp=omp, fixed_var='mpi')
+            self._set_ax_text(ax=ax, omp=omp, fixed_var='omp')
             if self.scaling_type == 'strong':
                 self._set_ax_legend(ax=ax)
 
