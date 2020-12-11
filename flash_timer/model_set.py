@@ -287,19 +287,18 @@ class ModelSet:
 
         return zupcs
 
-    def get_efficiency(self, omp, leaf, unit=None):
+    def get_efficiency(self, omp, leaf, mpi=None, unit=None, column=None):
         """Return array of scaling efficiency versus MPI ranks
         """
-        times = self.get_times(omp=omp, unit=unit, leaf=leaf)
+        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit, column=column)
 
         eff_factor = {'strong': self.mpi[omp],
-                      'weak': 1.0}.get(self.scaling_type)
+                      'weak': 1.0
+                      }.get(self.scaling_type)
 
-        efficiency = 100 * times[0] / (eff_factor * times)
+        return 100 * times[0] / (eff_factor * times)
 
-        return efficiency
-
-    def get_speedup(self, omp, leaf, unit, mpi=None, column=None):
+    def get_speedup(self, omp, leaf, unit=None, mpi=None, column=None):
         """Return array of speedup versus MPI ranks
         """
         times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit, column=column)
