@@ -322,20 +322,16 @@ class ModelSet:
         mpi : int
         unit : str
         """
-        if var == 'times':
-            return self.get_times(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+        func = {'times': self.get_times,
+                'zupcs': self.get_zupcs,
+                'speedup': self.get_speedup,
+                'efficiency': self.get_efficiency,
+                }.get(var)
 
-        elif var == 'zupcs':
-            return self.get_zupcs(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+        if func is None:
+            raise ValueError(f"invalid var: '{var}'")
 
-        elif var == 'speedup':
-            return self.get_speedup(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
-
-        elif var == 'efficiency':
-            return self.get_efficiency(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
-        
-        else:
-            raise ValueError(f"invalid arg: var='{var}'")
+        return func(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
 
     def slice_table(self, var, leaf, omp=None, mpi=None, unit=None):
         """Return slice of timing data versus mpi ranks or omp threads
