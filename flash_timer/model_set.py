@@ -294,7 +294,7 @@ class ModelSet:
     def get_efficiency(self, omp, leaf, mpi=None, unit=None):
         """Return array of scaling efficiency versus MPI ranks
         """
-        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+        times = self.slice_table(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
 
         eff_factor = {'strong': self.mpi[omp],
                       'weak': 1.0
@@ -305,7 +305,7 @@ class ModelSet:
     def get_speedup(self, omp, leaf, unit=None, mpi=None):
         """Return array of speedup versus MPI ranks
         """
-        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+        times = self.slice_table(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
         return times[0] / times
 
     def get_model_table(self, omp, leaf, mpi):
@@ -335,7 +335,7 @@ class ModelSet:
         var : str
         """
         if var in list(self.x.keys()):
-            return self.select_data(leaf=leaf, omp=omp, mpi=mpi,
+            return self.slice_table(leaf=leaf, omp=omp, mpi=mpi,
                                     unit=unit)
 
         elif var == 'speedup':
@@ -348,8 +348,8 @@ class ModelSet:
         else:
             raise ValueError(f"invalid arg: var='{var}'")
 
-    def select_data(self, leaf, omp=None, mpi=None, unit=None):
-        """Return subset of timing data versus mpi ranks or omp threads
+    def slice_table(self, leaf, omp=None, mpi=None, unit=None):
+        """Return slice of timing data versus mpi ranks or omp threads
 
         parameters
         ----------
@@ -452,7 +452,7 @@ class ModelSet:
 
         for leaf in self.leaf[omp]:
             label = {False: leaf}.get(data_only)
-            y = self.select_data(omp=omp, leaf=leaf, unit=unit)
+            y = self.slice_table(omp=omp, leaf=leaf, unit=unit)
 
             ax.plot(x, y, marker='o', label=label)
 
