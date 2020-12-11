@@ -265,23 +265,80 @@ class ModelSet:
     # =======================================================
     #                      Analysis
     # =======================================================
+    def get_data(self, var, leaf, omp=None, mpi=None, unit=None):
+        """Return variable from subset of performance data
+
+        parameters
+        ----------
+        var : one of ['times', 'zupcs', 'speedup', 'efficiency']
+        leaf : int
+        omp : int
+        mpi : int
+        unit : str
+        """
+        function = {'times': self.get_times,
+                    'zupcs': self.get_zupcs,
+                    'speedup': self.get_speedup,
+                    'efficiency': self.get_efficiency,
+                    }.get(var)
+
+        if function is None:
+            raise ValueError(f"invalid var: '{var}'")
+
+        return function(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+
     def get_times(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of runtimes versus mpi ranks
+
+        parameters
+        ----------
+        leaf : int
+        omp : int
+        mpi : int
+        unit : str
         """
-        return self.slice_table(var=self.time_column, leaf=leaf,
-                                omp=omp, mpi=mpi, unit=unit)
+        return self._slice_table(var=self.time_column, leaf=leaf,
+                                 omp=omp, mpi=mpi, unit=unit)
 
     def get_zupcs(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of Zone Updates Per Core Second, versus mpi ranks
+
+        parameters
+        ----------
+        leaf : int
+        omp : int
+        mpi : int
+        unit : str
         """
-        return self.slice_table(var='zupcs', leaf=leaf,
-                                omp=omp, mpi=mpi, unit=unit)
+        return self._slice_table(var='zupcs', leaf=leaf,
+                                 omp=omp, mpi=mpi, unit=unit)
+
+    def get_speedup(self, leaf, omp=None, unit=None, mpi=None):
+        """Return array of speedup versus MPI ranks
+
+        parameters
+        ----------
+        leaf : int
+        omp : int
+        mpi : int
+        unit : str
+        """
+        times = self._slice_table(var=self.time_column, leaf=leaf,
+                                  omp=omp, mpi=mpi, unit=unit)
+        return times[0] / times
 
     def get_efficiency(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of scaling efficiency versus MPI ranks
+
+        parameters
+        ----------
+        leaf : int
+        omp : int
+        mpi : int
+        unit : str
         """
-        times = self.slice_table(var=self.time_column, leaf=leaf,
-                                 omp=omp, mpi=mpi, unit=unit)
+        times = self._slice_table(var=self.time_column, leaf=leaf,
+                                  omp=omp, mpi=mpi, unit=unit)
 
         eff_factor = {'strong': self.mpi[omp],
                       'weak': 1.0
@@ -289,51 +346,7 @@ class ModelSet:
 
         return 100 * times[0] / (eff_factor * times)
 
-    def get_speedup(self, omp, leaf, unit=None, mpi=None):
-        """Return array of speedup versus MPI ranks
-        """
-        times = self.slice_table(var=self.time_column, leaf=leaf,
-                                 omp=omp, mpi=mpi, unit=unit)
-        return times[0] / times
-
-    def get_model_table(self, omp, leaf, mpi):
-        """Return timing table of specific model
-        """
-        m = self.models[omp][leaf][mpi]
-        return m.table
-
-    def get_leaf_blocks(self, leaf, omp):
-        """Return array of total leaf blocks versus mpi ranks for given omp
-        """
-        if self.scaling_type == 'strong':
-            return np.full_like(self.mpi[omp], leaf)
-
-        elif self.scaling_type == 'weak':
-            return leaf * self.mpi[omp]
-
-    def get_data(self, var, leaf, omp=None, mpi=None, unit=None):
-        """Return subset of performance data
-
-        parameters
-        ----------
-        var : str
-        leaf : int
-        omp : int
-        mpi : int
-        unit : str
-        """
-        func = {'times': self.get_times,
-                'zupcs': self.get_zupcs,
-                'speedup': self.get_speedup,
-                'efficiency': self.get_efficiency,
-                }.get(var)
-
-        if func is None:
-            raise ValueError(f"invalid var: '{var}'")
-
-        return func(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
-
-    def slice_table(self, var, leaf, omp=None, mpi=None, unit=None):
+    def _slice_table(self, var, leaf, omp=None, mpi=None, unit=None):
         """Return slice of timing data versus mpi ranks or omp threads
 
         parameters
@@ -363,6 +376,32 @@ class ModelSet:
         else:
             data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[var]
             return data
+
+    def get_model_table(self, leaf, omp, mpi):
+        """Return timing table of specific model
+
+        parameters
+        ----------
+        leaf : int
+        omp : int
+        mpi : int
+        """
+        m = self.models[omp][leaf][mpi]
+        return m.table
+
+    def get_leaf_blocks(self, leaf, omp):
+        """Return array of total leaf blocks versus mpi ranks for given omp
+
+        parameters
+        ----------
+        leaf : int
+        omp : int
+        """
+        if self.scaling_type == 'strong':
+            return np.full_like(self.mpi[omp], leaf)
+
+        elif self.scaling_type == 'weak':
+            return leaf * self.mpi[omp]
 
     # =======================================================
     #                      Plotting
@@ -416,8 +455,7 @@ class ModelSet:
         last_rank = x[-1]
 
         for leaf in self.leaf[omp]:
-            y = self.data[y_var][omp][leaf]
-            # y = self.select_data(leaf=leaf, omp=omp)
+            y = self.get_data(var=y_var, leaf=leaf, omp=omp, unit=unit)
             ax.plot(x, y, marker='o', label=leaf)
 
         if y_var == 'efficiency':
@@ -427,30 +465,6 @@ class ModelSet:
 
         self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
                      x_scale=x_scale, data_only=data_only, fixed_var='omp')
-
-        return fig
-
-    def plot_xarray(self, omp, y_var, unit=None, x_scale=None,
-                    ax=None, data_only=False):
-        """Plot scaling
-        """
-        fig, ax = self._setup_fig_ax(ax=ax)
-        x = self.mpi[omp]
-        last_rank = x[-1]
-
-        for leaf in self.leaf[omp]:
-            label = {False: leaf}.get(data_only)
-            y = self.get_data(var=y_var, omp=omp, leaf=leaf, unit=unit)
-
-            ax.plot(x, y, marker='o', label=label)
-
-        if y_var == 'efficiency':
-            ax.plot([1, last_rank], [100, 100], ls='--', color='black')
-        elif y_var == 'speedup':
-            ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
-
-        self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
-                     x_scale=x_scale, data_only=data_only, fixed_var='mpi')
 
         return fig
 
