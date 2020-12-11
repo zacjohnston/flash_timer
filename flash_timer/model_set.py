@@ -99,8 +99,6 @@ class ModelSet:
         self.extract_xarray()
         self.extract_zupcs()
 
-        self.extract_data(unit=self.unit)
-
     # =======================================================
     #                      Init/Loading
     # =======================================================
@@ -200,25 +198,6 @@ class ModelSet:
                                                         log_basename=self.log_basename,
                                                         which_table=self.which_table)
         print()
-
-    def extract_data(self, unit):
-        """Extract performace quantities from model tables
-        """
-        funcs = {'times': self.get_times,
-                 'speedup': self.get_speedup,
-                 'efficiency': self.get_efficiency,
-                 'zupcs': self.get_zupcs,
-                 }
-
-        print('Extracting performance data')
-        for key, func in funcs.items():
-            self.data[key] = {}
-
-            for omp in self.omp:
-                self.data[key][omp] = {}
-
-                for leaf in self.leaf[omp]:
-                    self.data[key][omp][leaf] = func(omp=omp, leaf=leaf, unit=unit)
 
     def extract_xarray(self):
         """Extract multi-dimensional table of model timing data
@@ -437,8 +416,8 @@ class ModelSet:
         for i, omp_threads in enumerate(omp):
             for j, y_var in enumerate(y_vars):
                 ax = axes[i, j]
-                self.plot_mpi(omp=omp_threads, y_var=y_var, ax=ax,
-                              unit=unit, data_only=True)
+                self.plot(y_var=y_var, omp=omp_threads, ax=ax,
+                          unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp=omp_threads,
                                      x_var='mpi', y_var=y_var,
@@ -446,9 +425,19 @@ class ModelSet:
         plt.tight_layout()
         return fig
 
-    def plot_mpi(self, omp, y_var, unit=None, x_scale=None,
-                 ax=None, data_only=False):
-        """Plot scaling
+    def plot(self, y_var, omp=None, mpi=None, unit=None, x_scale=None,
+             ax=None, data_only=False):
+        """Plot performance scaling versus OMP threads or MPI ranks
+
+        parameters
+        ----------
+        y_var : one of ['times', 'zupcs', 'speedup', 'efficiency']
+        omp : int or [int]
+        mpi : int or [int]
+        unit : str
+        x_scale : str
+        ax : Axes
+        data_only : bool
         """
         fig, ax = self._setup_fig_ax(ax=ax)
         x = self.mpi[omp]
