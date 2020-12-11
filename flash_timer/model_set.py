@@ -29,7 +29,8 @@ class ModelSet:
                  block_size=12,
                  n_timesteps=100,
                  unit='evolution',
-                 which_table='summary'
+                 column='avg',
+                 which_table='summary',
                  ):
         """
 
@@ -61,6 +62,8 @@ class ModelSet:
             (defaults to 'default')
         unit : str
             which timing unit in .log table to read from
+        column : str
+            name of column to use from logfile performance table
         which_table : 'summary' or 'main'
             timing table to read from logfile,
                 'summary': stats from all processes (not available when leaf_blocks=mpi)
@@ -80,6 +83,7 @@ class ModelSet:
         self.unit = unit
         self.models = {}
         self.data = {}
+        self.column = column
         self.which_table = which_table
 
         if self.scaling_type not in ['strong', 'weak']:
@@ -287,10 +291,10 @@ class ModelSet:
 
         return zupcs
 
-    def get_efficiency(self, omp, leaf, mpi=None, unit=None, column=None):
+    def get_efficiency(self, omp, leaf, mpi=None, unit=None):
         """Return array of scaling efficiency versus MPI ranks
         """
-        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit, column=column)
+        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
 
         eff_factor = {'strong': self.mpi[omp],
                       'weak': 1.0
@@ -298,10 +302,10 @@ class ModelSet:
 
         return 100 * times[0] / (eff_factor * times)
 
-    def get_speedup(self, omp, leaf, unit=None, mpi=None, column=None):
+    def get_speedup(self, omp, leaf, unit=None, mpi=None):
         """Return array of speedup versus MPI ranks
         """
-        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit, column=column)
+        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
         return times[0] / times
 
     def get_model_table(self, omp, leaf, mpi):
@@ -319,7 +323,32 @@ class ModelSet:
         elif self.scaling_type == 'weak':
             return leaf * self.mpi[omp]
 
-    def select_data(self, leaf, omp=None, mpi=None, unit=None, column=None):
+    def get_data(self, var, leaf, omp=None, mpi=None, unit=None):
+        """Return subset of performance data
+
+        parameters
+        ----------
+        omp : int
+        mpi : int
+        leaf : int
+        unit : str
+        var : str
+        """
+        if var in list(self.x.keys()):
+            return self.select_data(leaf=leaf, omp=omp, mpi=mpi,
+                                    unit=unit)
+
+        elif var == 'speedup':
+            return self.get_speedup(leaf=leaf, omp=omp, mpi=mpi,
+                                    unit=unit)
+
+        elif var == 'efficiency':
+            return self.get_efficiency(leaf=leaf, omp=omp, mpi=mpi,
+                                       unit=unit)
+        else:
+            raise ValueError(f"invalid arg: var='{var}'")
+
+    def select_data(self, leaf, omp=None, mpi=None, unit=None):
         """Return subset of timing data versus mpi ranks or omp threads
 
         parameters
@@ -328,26 +357,23 @@ class ModelSet:
         mpi : int
         leaf : int
         unit : str
-        column : str
         """
         if unit is None:
             unit = self.unit
-        if column is None:
-            column = 'avg'
 
         if mpi is None:
             if omp is None:
                 raise ValueError("Must specify either 'omp' or 'mpi'")
             else:
-                data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
+                data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[self.column]
                 return data.dropna('mpi')
 
         elif omp is None:
-            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[column]
+            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[self.column]
             return data.dropna('omp')
 
         else:
-            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[column]
+            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[self.column]
             return data
 
     # =======================================================
@@ -417,7 +443,7 @@ class ModelSet:
         return fig
 
     def plot_xarray(self, omp, y_var, unit=None, x_scale=None,
-                    ax=None, data_only=False, column='avg'):
+                    ax=None, data_only=False):
         """Plot scaling
         """
         fig, ax = self._setup_fig_ax(ax=ax)
@@ -426,7 +452,7 @@ class ModelSet:
 
         for leaf in self.leaf[omp]:
             label = {False: leaf}.get(data_only)
-            y = self.select_data(omp=omp, leaf=leaf, unit=unit, column=column)
+            y = self.select_data(omp=omp, leaf=leaf, unit=unit)
 
             ax.plot(x, y, marker='o', label=label)
 
@@ -441,9 +467,8 @@ class ModelSet:
         return fig
 
     def plot_omp(self, mpi, y_var, unit=None, x_scale=None,
-                 ax=None, data_only=False, column='avg',
-                 marker='o',
-                 linestyle='-'):
+                 ax=None, data_only=False,
+                 marker='o', linestyle='-'):
         """Plot OMP thread scaling
         """
         if unit is None:
@@ -451,7 +476,7 @@ class ModelSet:
 
         fig, ax = self._setup_fig_ax(ax=ax)
 
-        data = self.x.sel(mpi=mpi, unit=unit)[column]
+        data = self.x.sel(mpi=mpi, unit=unit)[self.column]
 
         for leaf in data.leaf:
             label = {False: int(leaf)}.get(data_only)
