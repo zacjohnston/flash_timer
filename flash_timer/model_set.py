@@ -94,7 +94,7 @@ class ModelSet:
         self.expand_sequences()
         self.load_models()
 
-        self.x = None
+        self.data = None
         self.extract_data()
 
     # =======================================================
@@ -223,22 +223,22 @@ class ModelSet:
         full_xr = xr.concat(omp_dict.values(), dim='omp')
         full_xr.coords['omp'] = list(omp_dict.keys())
 
-        self.x = full_xr
+        self.data = full_xr
         self.extract_zupcs()
 
     def extract_zupcs(self):
         """Add ZUPCS to xarray table
         """
         if self.scaling_type == 'strong':
-            leaf_blocks = self.x.leaf
+            leaf_blocks = self.data.leaf
         else:
-            leaf_blocks = self.x.leaf * self.x.mpi
+            leaf_blocks = self.data.leaf * self.data.mpi
 
         zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
-        core_seconds = self.x.omp * self.x.mpi * self.x['avg']
+        core_seconds = self.data.omp * self.data.mpi * self.data['avg']
 
         zupcs = zone_updates / core_seconds
-        self.x['zupcs'] = zupcs
+        self.data['zupcs'] = zupcs
 
     # =======================================================
     #                      Analysis
@@ -335,7 +335,7 @@ class ModelSet:
         mpi : int
         unit : str
         """
-        if var not in list(self.x.keys()):
+        if var not in list(self.data.keys()):
             raise ValueError(f"var='{var}' not in table")
         if unit is None:
             unit = self.unit
@@ -344,15 +344,15 @@ class ModelSet:
             if omp is None:
                 raise ValueError("Must specify either 'omp' or 'mpi'")
             else:
-                data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[var]
+                data = self.data.sel(omp=omp, leaf=leaf, unit=unit)[var]
                 return data.dropna('mpi')
 
         elif omp is None:
-            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[var]
+            data = self.data.sel(mpi=mpi, leaf=leaf, unit=unit)[var]
             return data.dropna('omp')
 
         else:
-            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[var]
+            data = self.data.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[var]
             return data
 
     def get_model_table(self, leaf, omp, mpi):
@@ -466,7 +466,7 @@ class ModelSet:
 
         fig, ax = self._setup_fig_ax(ax=ax)
 
-        data = self.x.sel(mpi=mpi, unit=unit)[self.time_column]
+        data = self.data.sel(mpi=mpi, unit=unit)[self.time_column]
 
         for leaf in data.leaf:
             label = {False: int(leaf)}.get(data_only)
