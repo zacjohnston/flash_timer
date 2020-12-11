@@ -90,11 +90,12 @@ class ModelSet:
 
         self.expand_sequences()
         self.load_models()
-        self.extract_data(unit=self.unit)
 
         self.x = None
         self.extract_xarray()
         self.extract_zupcs()
+
+        self.extract_data(unit=self.unit)
 
     # =======================================================
     #                      Init/Loading
@@ -298,13 +299,11 @@ class ModelSet:
 
         return efficiency
 
-    def get_speedup(self, omp, leaf, unit):
+    def get_speedup(self, omp, leaf, unit, mpi=None, column=None):
         """Return array of speedup versus MPI ranks
         """
-        times = self.get_times(omp=omp, unit=unit, leaf=leaf)
-        speedup = times[0] / times
-
-        return speedup
+        times = self.select_data(leaf=leaf, omp=omp, mpi=mpi, unit=unit, column=column)
+        return times[0] / times
 
     def get_model_table(self, omp, leaf, mpi):
         """Return timing table of specific model
