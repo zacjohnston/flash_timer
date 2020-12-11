@@ -82,7 +82,6 @@ class ModelSet:
         self.n_timesteps = n_timesteps
         self.unit = unit
         self.models = {}
-        self.data = {}
         self.time_column = time_column
         self.which_table = which_table
 
@@ -96,8 +95,7 @@ class ModelSet:
         self.load_models()
 
         self.x = None
-        self.extract_xarray()
-        self.extract_zupcs()
+        self.extract_data()
 
     # =======================================================
     #                      Init/Loading
@@ -199,7 +197,7 @@ class ModelSet:
                                                         which_table=self.which_table)
         print()
 
-    def extract_xarray(self):
+    def extract_data(self):
         """Extract multi-dimensional table of model timing data
         """
         print('Extracting performance data')
@@ -226,6 +224,7 @@ class ModelSet:
         full_xr.coords['omp'] = list(omp_dict.keys())
 
         self.x = full_xr
+        self.extract_zupcs()
 
     def extract_zupcs(self):
         """Add ZUPCS to xarray table
