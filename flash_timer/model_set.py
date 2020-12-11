@@ -29,7 +29,7 @@ class ModelSet:
                  block_size=12,
                  n_timesteps=100,
                  unit='evolution',
-                 column='avg',
+                 time_column='avg',
                  which_table='summary',
                  ):
         """
@@ -62,7 +62,7 @@ class ModelSet:
             (defaults to 'default')
         unit : str
             which timing unit in .log table to read from
-        column : str
+        time_column : str
             name of column to use from logfile performance table
         which_table : 'summary' or 'main'
             timing table to read from logfile,
@@ -83,7 +83,7 @@ class ModelSet:
         self.unit = unit
         self.models = {}
         self.data = {}
-        self.column = column
+        self.time_column = time_column
         self.which_table = which_table
 
         if self.scaling_type not in ['strong', 'weak']:
@@ -279,22 +279,17 @@ class ModelSet:
 
         return np.array(times)
 
-    def get_zupcs(self, omp, leaf, unit=None):
+    def get_zupcs(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of Zone Updates Per Core Second, versus mpi ranks
         """
-        times = self.get_times(omp=omp, unit=unit, leaf=leaf)
-        leaf_blocks = self.get_leaf_blocks(leaf=leaf, omp=omp)
-
-        zone_updates = self.n_timesteps * leaf_blocks * self.block_size**3
-        core_seconds = omp * self.mpi[omp] * times
-        zupcs = zone_updates / core_seconds
-
-        return zupcs
+        return self.slice_table(var='zupcs', leaf=leaf,
+                                omp=omp, mpi=mpi, unit=unit)
 
     def get_efficiency(self, omp, leaf, mpi=None, unit=None):
         """Return array of scaling efficiency versus MPI ranks
         """
-        times = self.slice_table(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+        times = self.slice_table(var=self.time_column, leaf=leaf,
+                                 omp=omp, mpi=mpi, unit=unit)
 
         eff_factor = {'strong': self.mpi[omp],
                       'weak': 1.0
@@ -305,7 +300,8 @@ class ModelSet:
     def get_speedup(self, omp, leaf, unit=None, mpi=None):
         """Return array of speedup versus MPI ranks
         """
-        times = self.slice_table(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+        times = self.slice_table(var=self.time_column, leaf=leaf,
+                                 omp=omp, mpi=mpi, unit=unit)
         return times[0] / times
 
     def get_model_table(self, omp, leaf, mpi):
@@ -328,15 +324,19 @@ class ModelSet:
 
         parameters
         ----------
+        var : str
+        leaf : int
         omp : int
         mpi : int
-        leaf : int
         unit : str
-        var : str
         """
-        if var in list(self.x.keys()):
-            return self.slice_table(leaf=leaf, omp=omp, mpi=mpi,
-                                    unit=unit)
+        if var == 'times':
+            return self.slice_table(var=self.time_column, leaf=leaf,
+                                    omp=omp, mpi=mpi, unit=unit)
+
+        elif var == 'zupcs':
+            return self.get_zupcs(var='zupcs', leaf=leaf,
+                                  omp=omp, mpi=mpi, unit=unit)
 
         elif var == 'speedup':
             return self.get_speedup(leaf=leaf, omp=omp, mpi=mpi,
@@ -348,16 +348,19 @@ class ModelSet:
         else:
             raise ValueError(f"invalid arg: var='{var}'")
 
-    def slice_table(self, leaf, omp=None, mpi=None, unit=None):
+    def slice_table(self, var, leaf, omp=None, mpi=None, unit=None):
         """Return slice of timing data versus mpi ranks or omp threads
 
         parameters
         ----------
+        leaf : int
+        var : str
         omp : int
         mpi : int
-        leaf : int
         unit : str
         """
+        if var not in list(self.x.keys()):
+            raise ValueError(f"var='{var}' not in table")
         if unit is None:
             unit = self.unit
 
@@ -365,15 +368,15 @@ class ModelSet:
             if omp is None:
                 raise ValueError("Must specify either 'omp' or 'mpi'")
             else:
-                data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[self.column]
+                data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[var]
                 return data.dropna('mpi')
 
         elif omp is None:
-            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[self.column]
+            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[var]
             return data.dropna('omp')
 
         else:
-            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[self.column]
+            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[var]
             return data
 
     # =======================================================
@@ -452,7 +455,7 @@ class ModelSet:
 
         for leaf in self.leaf[omp]:
             label = {False: leaf}.get(data_only)
-            y = self.slice_table(omp=omp, leaf=leaf, unit=unit)
+            y = self.get_data(var=y_var, omp=omp, leaf=leaf, unit=unit)
 
             ax.plot(x, y, marker='o', label=label)
 
@@ -476,7 +479,7 @@ class ModelSet:
 
         fig, ax = self._setup_fig_ax(ax=ax)
 
-        data = self.x.sel(mpi=mpi, unit=unit)[self.column]
+        data = self.x.sel(mpi=mpi, unit=unit)[self.time_column]
 
         for leaf in data.leaf:
             label = {False: int(leaf)}.get(data_only)
