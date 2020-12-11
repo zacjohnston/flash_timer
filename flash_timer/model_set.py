@@ -29,6 +29,7 @@ class ModelSet:
                  block_size=12,
                  n_timesteps=100,
                  unit='evolution',
+                 which_table='summary'
                  ):
         """
 
@@ -60,6 +61,10 @@ class ModelSet:
             (defaults to 'default')
         unit : str
             which timing unit in .log table to read from
+        which_table : 'summary' or 'main'
+            timing table to read from logfile,
+                'summary': stats from all processes (not available when leaf_blocks=mpi)
+                'main': stats for main process only
         """
         self.scaling_type = scaling_type
         self.model_set = model_set
@@ -75,6 +80,7 @@ class ModelSet:
         self.unit = unit
         self.models = {}
         self.data = {}
+        self.which_table = which_table
 
         if self.scaling_type not in ['strong', 'weak']:
             raise ValueError(f"scaling_type='{scaling_type}', must be 'strong' or 'weak'")
@@ -186,7 +192,8 @@ class ModelSet:
                                                         omp=omp,
                                                         leaf_blocks=leaf_blocks[i],
                                                         mpi=mpi,
-                                                        log_basename=self.log_basename)
+                                                        log_basename=self.log_basename,
+                                                        which_table=self.which_table)
         print()
 
     def extract_data(self, unit):

@@ -4,7 +4,8 @@
 import pandas as pd
 
 
-def extract_table(filepath, loglines=None):
+def extract_table(filepath, loglines=None,
+                  which_table='summary'):
     """Get perf timing table from .log file
 
     Return: pd.DataFrame
@@ -14,14 +15,23 @@ def extract_table(filepath, loglines=None):
     filepath : str
         path to .log file
     loglines : [str]
+    which_table : 'summary' or 'main'
+        which timing table to read,
+            'summary': stats from all processes (not available when leaf_blocks=mpi)
+            'main': stats for main process only
     """
+    names = {'summary': ['unit', 'max', 'min', 'avg', 'calls'],
+             'main': ['unit', 'tot', 'calls', 'avg', 'pct']
+             }.get(which_table)
+    if names is None:
+        raise ValueError("'which_table' must be either 'summary' or 'main'")
+
     table_start, table_end = get_table_lines(filepath=filepath, loglines=loglines)
 
     table = pd.read_csv(filepath, skiprows=table_start,
                         header=None, sep=r"[ ]{2,}", engine='python',
-                        names=['unit', 'max', 'min', 'avg', 'calls'],
-                        # names=['unit', 'tot', 'calls', 'avg', 'pct'],
-                        index_col='unit', nrows=table_end-table_start)
+                        names=names, index_col='unit',
+                        nrows=table_end-table_start)
 
     renamed_units = rename_duplicate_units(table)
     table.index = pd.Index(renamed_units, name='unit')

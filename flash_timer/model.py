@@ -11,7 +11,9 @@ class Model:
                  leaf_blocks,
                  mpi,
                  log_filepath=None,
-                 log_basename='sod3d'):
+                 log_basename='sod3d',
+                 which_table='summary',
+                 ):
         """
         parameters
         ----------
@@ -25,6 +27,10 @@ class Model:
             no. MPI ranks used
         log_filepath : str
             path to .log file (optional)
+        which_table : 'summary' or 'main'
+            timing table to read from logfile,
+                'summary': stats from all processes (not available when leaf_blocks=mpi)
+                'main': stats for main process only
         """
         if log_filepath is None:
             log_filepath = paths.log_filepath(model_set=model_set,
@@ -38,4 +44,5 @@ class Model:
         self.omp = omp
         self.leaf_blocks = leaf_blocks
         self.mpi = mpi
-        self.table = logfile.extract_table(filepath=self.log_filepath)
+        self.table = logfile.extract_table(filepath=self.log_filepath,
+                                           which_table=which_table)
