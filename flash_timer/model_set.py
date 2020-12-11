@@ -265,19 +265,11 @@ class ModelSet:
     # =======================================================
     #                      Analysis
     # =======================================================
-    def get_times(self, omp, leaf, unit=None):
+    def get_times(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of runtimes versus mpi ranks
         """
-        times = []
-
-        if unit is None:
-            unit = self.config['params']['unit']
-
-        for mod in self.models[omp][leaf].values():
-            t = float(mod.table.loc[unit, 'avg'])
-            times += [t]
-
-        return np.array(times)
+        return self.slice_table(var=self.time_column, leaf=leaf,
+                                omp=omp, mpi=mpi, unit=unit)
 
     def get_zupcs(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of Zone Updates Per Core Second, versus mpi ranks
@@ -285,7 +277,7 @@ class ModelSet:
         return self.slice_table(var='zupcs', leaf=leaf,
                                 omp=omp, mpi=mpi, unit=unit)
 
-    def get_efficiency(self, omp, leaf, mpi=None, unit=None):
+    def get_efficiency(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of scaling efficiency versus MPI ranks
         """
         times = self.slice_table(var=self.time_column, leaf=leaf,
@@ -331,20 +323,17 @@ class ModelSet:
         unit : str
         """
         if var == 'times':
-            return self.slice_table(var=self.time_column, leaf=leaf,
-                                    omp=omp, mpi=mpi, unit=unit)
+            return self.get_times(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
 
         elif var == 'zupcs':
-            return self.get_zupcs(var='zupcs', leaf=leaf,
-                                  omp=omp, mpi=mpi, unit=unit)
+            return self.get_zupcs(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
 
         elif var == 'speedup':
-            return self.get_speedup(leaf=leaf, omp=omp, mpi=mpi,
-                                    unit=unit)
+            return self.get_speedup(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
 
         elif var == 'efficiency':
-            return self.get_efficiency(leaf=leaf, omp=omp, mpi=mpi,
-                                       unit=unit)
+            return self.get_efficiency(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+        
         else:
             raise ValueError(f"invalid arg: var='{var}'")
 
