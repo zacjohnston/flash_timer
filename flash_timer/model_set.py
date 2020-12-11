@@ -315,7 +315,7 @@ class ModelSet:
             return leaf * self.mpi[omp]
 
     def select_data(self, leaf, omp=None, mpi=None, unit=None, column=None):
-        """Return subset of timing data versus mpi ranks
+        """Return subset of timing data versus mpi ranks or omp threads
 
         parameters
         ----------
@@ -336,9 +336,14 @@ class ModelSet:
             else:
                 data = self.x.sel(omp=omp, leaf=leaf, unit=unit)[column]
                 return data.dropna('mpi')
-        else:
+
+        elif omp is None:
             data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit)[column]
             return data.dropna('omp')
+
+        else:
+            data = self.x.sel(mpi=mpi, leaf=leaf, unit=unit, omp=omp)[column]
+            return data
 
     # =======================================================
     #                      Plotting
@@ -392,8 +397,8 @@ class ModelSet:
         last_rank = x[-1]
 
         for leaf in self.leaf[omp]:
-            # y = self.data[y_var][omp][leaf]
-            y = self.select_data(leaf=leaf, omp=omp)
+            y = self.data[y_var][omp][leaf]
+            # y = self.select_data(leaf=leaf, omp=omp)
             ax.plot(x, y, marker='o', label=leaf)
 
         if y_var == 'efficiency':
@@ -498,7 +503,7 @@ class ModelSet:
                 self._set_ax_legend(ax=ax)
 
             if row == 0:
-                ax.set_title(f'{self.model_set}')
+                self._set_ax_title(ax=ax)
                 if self.scaling_type == 'weak':
                     self._set_ax_legend(ax=ax)
 
