@@ -254,10 +254,10 @@ class ModelSet:
         mpi : int
         unit : str
         """
-        function = {'times': self.get_times,
-                    'zupcs': self.get_zupcs,
-                    'speedup': self.get_speedup,
-                    'efficiency': self.get_efficiency,
+        function = {'times': self._get_times,
+                    'zupcs': self._get_zupcs,
+                    'speedup': self._get_speedup,
+                    'efficiency': self._get_efficiency,
                     }.get(var)
 
         if function is None:
@@ -265,7 +265,7 @@ class ModelSet:
 
         return function(leaf=leaf, omp=omp, mpi=mpi, unit=unit)
 
-    def get_times(self, leaf, omp=None, mpi=None, unit=None):
+    def _get_times(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of runtimes versus mpi ranks
 
         parameters
@@ -278,7 +278,7 @@ class ModelSet:
         return self._slice_table(var=self.time_column, leaf=leaf,
                                  omp=omp, mpi=mpi, unit=unit)
 
-    def get_zupcs(self, leaf, omp=None, mpi=None, unit=None):
+    def _get_zupcs(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of Zone Updates Per Core Second, versus mpi ranks
 
         parameters
@@ -291,7 +291,7 @@ class ModelSet:
         return self._slice_table(var='zupcs', leaf=leaf,
                                  omp=omp, mpi=mpi, unit=unit)
 
-    def get_speedup(self, leaf, omp=None, unit=None, mpi=None):
+    def _get_speedup(self, leaf, omp=None, unit=None, mpi=None):
         """Return array of speedup versus MPI ranks
 
         parameters
@@ -305,7 +305,7 @@ class ModelSet:
                                   omp=omp, mpi=mpi, unit=unit)
         return times[0] / times
 
-    def get_efficiency(self, leaf, omp=None, mpi=None, unit=None):
+    def _get_efficiency(self, leaf, omp=None, mpi=None, unit=None):
         """Return array of scaling efficiency versus MPI ranks
 
         parameters
