@@ -391,7 +391,7 @@ class ModelSet:
 
         parameters
         ----------
-        omp : [int]
+        omp : int or [int]
         y_vars : [str]
             types of plots
         unit : str
@@ -402,7 +402,7 @@ class ModelSet:
         if omp is None:
             omp = self.omp
         else:
-            omp = tools.ensure_sequence(omp)
+            omp = tools.expand_sequence(omp)
 
         if y_vars is None:
             y_vars = self.config['plot']['multiplot'][self.scaling_type]
@@ -431,8 +431,8 @@ class ModelSet:
         parameters
         ----------
         y_var : one of ['times', 'zupcs', 'speedup', 'efficiency']
-        omp : int or [int]
-        mpi : int or [int]
+        omp : int
+        mpi : int
         unit : str
         x_scale : str
         ax : Axes
@@ -471,7 +471,7 @@ class ModelSet:
         for leaf in data.leaf:
             label = {False: int(leaf)}.get(data_only)
 
-            y = data.sel(leaf=leaf).dropna('omp')
+            y = self.get_data(var=y_var, leaf=leaf, mpi=mpi, unit=unit)
             x = y.omp
             ax.plot(x, y, marker=marker, linestyle=linestyle, label=label)
 
