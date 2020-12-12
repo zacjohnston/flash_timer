@@ -47,11 +47,24 @@ def load_config(name=None):
 # =======================================================================
 #                      Misc. tools
 # =======================================================================
+def expand_sequence(x):
+    """Expand power sequence if x is int, else return x
+
+    parameters
+    ----------
+    x : arraylike or scalar
+    """
+    if isinstance(x, (list, tuple, np.ndarray)):
+        return np.array(x)
+    else:
+        return expand_power_sequence(largest=x)
+
+
 def expand_power_sequence(largest=None, length=None):
     """Return sequence of powers-of-two
 
     examples: largest=16 returns [1,2,4,8,16]
-              length=4 returns [1,2,3,4]
+              length=4 returns [1,2,4,8]
 
     parameters
     ----------
@@ -75,7 +88,7 @@ def ensure_sequence(x):
 
     parameters
     ----------
-    x : array or scalar
+    x : arraylike or scalar
     """
     if isinstance(x, (list, tuple, np.ndarray)):
         return np.array(x)
