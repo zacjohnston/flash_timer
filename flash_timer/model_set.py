@@ -425,7 +425,7 @@ class ModelSet:
         return fig
 
     def plot(self, y_var, omp=None, mpi=None, unit=None, x_scale=None,
-             ax=None, data_only=False):
+             ax=None, data_only=False, marker='o', linestyle='-'):
         """Plot performance scaling versus OMP threads or MPI ranks
 
         parameters
@@ -437,14 +437,17 @@ class ModelSet:
         x_scale : str
         ax : Axes
         data_only : bool
+        marker : str
+        linestyle : str
         """
         fig, ax = self._setup_fig_ax(ax=ax)
         x = self.mpi[omp]
         last_rank = x[-1]
 
         for leaf in self.leaf[omp]:
+            label = leaf
             y = self.get_data(var=y_var, leaf=leaf, omp=omp, unit=unit)
-            ax.plot(x, y, marker='o', label=leaf)
+            ax.plot(x, y, label=label, marker=marker, linestyle=linestyle)
 
         if y_var == 'efficiency':
             ax.plot([1, last_rank], [100, 100], ls='--', color='black')
