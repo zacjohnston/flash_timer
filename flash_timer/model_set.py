@@ -73,7 +73,7 @@ class ModelSet:
         self.model_set = model_set
         self.omp = omp
         self.mpi = mpi
-        self.leaf = leaf
+        self.leaf = {}
         self.leaf_per_max_rank = leaf_per_max_rank
         self.leaf_per_rank = leaf_per_rank
         self.max_cores = max_cores
@@ -84,6 +84,7 @@ class ModelSet:
         self.models = {}
         self.time_column = time_column
         self.which_table = which_table
+        self.data = None
 
         if self.scaling_type not in ['strong', 'weak']:
             raise ValueError(f"scaling_type='{scaling_type}', must be 'strong' or 'weak'")
@@ -91,10 +92,11 @@ class ModelSet:
         self.config = None
         self.load_config(config=config)
 
-        self.expand_sequences()
-        self.load_models()
+        self.expand_omp()
+        self.expand_mpi()
+        self.expand_leaf(leaf=leaf)
 
-        self.data = None
+        self.load_models()
         self.extract_data()
 
     # =======================================================
@@ -124,13 +126,6 @@ class ModelSet:
             if self.leaf_per_rank is None:
                 self.leaf_per_rank = self.config['params']['leaf_per_rank']
 
-    def expand_sequences(self):
-        """Expand all sequence attributes
-        """
-        self.expand_omp()
-        self.expand_mpi()
-        self.expand_leaf()
-
     def expand_omp(self):
         """Expand omp sequence
         """
@@ -157,23 +152,23 @@ class ModelSet:
 
         self.mpi = mpi
 
-    def expand_leaf(self):
+    def expand_leaf(self, leaf):
         """Expand leaf sequences for each omp
-        """
-        leaf = {}
 
+        parameters
+        ----------
+        leaf : [int]
+        """
         for omp in self.omp:
-            if self.leaf is None:
+            if leaf is None:
                 if self.scaling_type == 'strong':
                     max_ranks = int(self.max_cores / omp)
-                    leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
+                    self.leaf[omp] = max_ranks * np.array(self.leaf_per_max_rank)
 
                 elif self.scaling_type == 'weak':
-                    leaf[omp] = np.array(self.leaf_per_rank)
+                    self.leaf[omp] = np.array(self.leaf_per_rank)
             else:
-                leaf[omp] = tools.ensure_sequence(self.leaf)
-
-        self.leaf = leaf
+                self.leaf[omp] = tools.ensure_sequence(leaf)
 
     def load_models(self):
         """Load all model timing data
