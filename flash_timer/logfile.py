@@ -139,6 +139,12 @@ def get_summary_line(filepath=None, loglines=None):
 
 def check_loglines(filepath, loglines):
     """Check if loglines provided, otherwise load from file
+
+    parameters
+    ----------
+    filepath : str
+        path to .log file
+    loglines : [str]
     """
     if loglines is None:
         if filepath is None:
