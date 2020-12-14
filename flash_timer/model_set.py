@@ -71,7 +71,7 @@ class ModelSet:
         """
         self.scaling_type = scaling_type
         self.model_set = model_set
-        self.omp = omp
+        self.omp = None
         self.mpi = {}
         self.leaf = {}
         self.leaf_per_max_rank = leaf_per_max_rank
@@ -92,7 +92,7 @@ class ModelSet:
         self.config = None
         self.load_config(config=config)
 
-        self.expand_omp()
+        self.expand_omp(omp=omp)
         self.expand_mpi(mpi=mpi)
         self.expand_leaf(leaf=leaf)
 
@@ -126,15 +126,22 @@ class ModelSet:
             if self.leaf_per_rank is None:
                 self.leaf_per_rank = self.config['params']['leaf_per_rank']
 
-    def expand_omp(self):
+    def expand_omp(self, omp):
         """Expand omp sequence
+
+        parameters
+        ----------
+        omp : [int]
         """
-        if self.omp is None:
+        if omp is None:
             max_threads = int(self.max_cores / 2)
             self.omp = tools.expand_power_sequence(largest=max_threads)
 
-        elif isinstance(self.omp, int):
-            self.omp = tools.expand_power_sequence(largest=self.omp)
+        elif isinstance(omp, int):
+            self.omp = tools.expand_power_sequence(largest=omp)
+
+        else:
+            self.omp = omp
 
     def expand_mpi(self, mpi):
         """Expand mpi sequences for each omp
