@@ -141,7 +141,7 @@ class ModelSet:
             self.omp = tools.expand_power_sequence(largest=omp)
 
         else:
-            self.omp = omp
+            self.omp = np.array(omp)
 
     def expand_mpi(self, mpi):
         """Expand mpi sequences for each omp
@@ -158,7 +158,7 @@ class ModelSet:
             elif isinstance(mpi, int):
                 self.mpi[omp] = tools.expand_power_sequence(largest=mpi)
             else:
-                self.mpi[omp] = mpi
+                self.mpi[omp] = np.array(mpi)
 
     def expand_leaf(self, leaf):
         """Expand leaf sequences for each omp
