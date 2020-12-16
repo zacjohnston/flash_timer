@@ -321,7 +321,12 @@ class ModelSet:
         times = self._slice_table(var=self.time_column, leaf=leaf,
                                   omp=omp, mpi=mpi, unit=unit)
 
-        eff_factor = {'strong': self.mpi[omp],
+        if mpi is None:
+            x = times.mpi
+        else:
+            x = times.omp
+
+        eff_factor = {'strong': x,
                       'weak': 1.0
                       }.get(self.scaling_type)
 
