@@ -467,7 +467,7 @@ class ModelSet:
         elif y_var == 'speedup':
             ax.plot([1, max_x], [1, max_x], ls='--', color='black')
 
-        self._set_ax(ax=ax, x_var=x_var, y_var=y_var, x=x, omp=omp,
+        self._set_ax(ax=ax, x_var=x_var, y_var=y_var, omp=omp,
                      x_scale=x_scale, data_only=data_only)
 
         return fig
@@ -491,7 +491,7 @@ class ModelSet:
             x = y.omp
             ax.plot(x, y, marker=marker, linestyle=linestyle, label=label)
 
-        self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=self.omp, omp=mpi,
+        self._set_ax(ax=ax, x_var='omp', y_var=y_var, omp=mpi,
                      x_scale=x_scale, data_only=data_only)
 
         return fig
@@ -527,14 +527,13 @@ class ModelSet:
         if x_map[x_var] is None:
             raise ValueError(f"must specify {name_map[x_var]} if x_var='{x_var}'")
 
-    def _set_ax(self, ax, x, x_var, y_var, omp,
+    def _set_ax(self, ax, x_var, y_var, omp,
                 x_scale=None, y_scale=None, data_only=False):
         """Set axis properties
 
         parameters
         ----------
         ax : Axis
-        x : []
         x_var : str
         y_var : str
         omp : int
@@ -550,7 +549,7 @@ class ModelSet:
             self._set_ax_labels(ax=ax, x_var=x_var, y_var=y_var)
             self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                                x_scale=x_scale, y_scale=y_scale)
-            self._set_ax_xticks(ax=ax, x=x)
+            self._set_ax_xticks(ax=ax)
             self._set_ax_text(ax=ax, omp=omp, fixed_var=fixed_map[x_var])
 
     def _set_ax_subplot(self, axes, x_var, y_var, row, col, omp,
@@ -589,7 +588,7 @@ class ModelSet:
 
         self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                            x_scale=x_scale, y_scale=y_scale)
-        self._set_ax_xticks(ax=ax, x=self.mpi[omp])
+        self._set_ax_xticks(ax=ax)
 
     def _set_ax_legend(self, ax):
         """Set axis legend
@@ -641,15 +640,14 @@ class ModelSet:
         ax.set_xlabel(get_label(x_var))
         ax.set_ylabel(get_label(y_var))
 
-    def _set_ax_xticks(self, ax, x):
+    def _set_ax_xticks(self, ax):
         """Set axis ticks
 
         parameters
         ----------
         ax : Axis
-        x : []
-            xtick locations
         """
+        x = tools.expand_power_sequence(largest=self.max_cores)
         ax.xaxis.set_major_formatter(ScalarFormatter())
         ax.set_xticks(x)
         ax.tick_params(axis='x', which='minor', bottom=False)
