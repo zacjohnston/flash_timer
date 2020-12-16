@@ -376,7 +376,7 @@ class ModelSet:
         return m.table
 
     def get_leaf_blocks(self, leaf, omp):
-        """Return array of total leaf blocks versus mpi ranks for given omp
+        """Return array of total leaf blocks versus mpi or omp
 
         parameters
         ----------
@@ -423,7 +423,7 @@ class ModelSet:
         for i, omp_threads in enumerate(omp):
             for j, y_var in enumerate(y_vars):
                 ax = axes[i, j]
-                self.plot(y_var=y_var, omp=omp_threads, ax=ax,
+                self.plot(x_var='mpi', y_var=y_var, omp=omp_threads, ax=ax,
                           unit=unit, data_only=True)
 
                 self._set_ax_subplot(axes=axes, row=i, col=j, omp=omp_threads,
@@ -432,12 +432,13 @@ class ModelSet:
         plt.tight_layout()
         return fig
 
-    def plot(self, y_var, omp=None, mpi=None, unit=None, x_scale=None,
+    def plot(self, x_var, y_var, omp=None, mpi=None, unit=None, x_scale=None,
              ax=None, data_only=False, marker='o', linestyle='-'):
         """Plot performance scaling versus OMP threads or MPI ranks
 
         parameters
         ----------
+        x_var : 'omp' or 'mpi'
         y_var : one of ['times', 'zupcs', 'speedup', 'efficiency']
         omp : int
         mpi : int
@@ -449,23 +450,25 @@ class ModelSet:
         linestyle : str
         """
         fig, ax = self._setup_fig_ax(ax=ax)
-        x = self.mpi[omp]
-        last_rank = x[-1]
+        self._check_x_var(x_var=x_var, omp=omp, mpi=mpi)
+        max_x = 1
 
         for leaf in self.leaf[omp]:
             label = leaf
             # label = {False: int(leaf)}.get(data_only)
 
-            y = self.get_data(var=y_var, leaf=leaf, omp=omp, unit=unit)
+            y = self.get_data(var=y_var, leaf=leaf, omp=omp, mpi=mpi, unit=unit)
+            x = y.coords[x_var]
+            max_x = max(max_x, x[-1])
             ax.plot(x, y, label=label, marker=marker, linestyle=linestyle)
 
         if y_var == 'efficiency':
-            ax.plot([1, last_rank], [100, 100], ls='--', color='black')
+            ax.plot([1, max_x], [100, 100], ls='--', color='black')
         elif y_var == 'speedup':
-            ax.plot([1, last_rank], [1, last_rank], ls='--', color='black')
+            ax.plot([1, max_x], [1, max_x], ls='--', color='black')
 
-        self._set_ax(ax=ax, x_var='mpi', y_var=y_var, x=x, omp=omp,
-                     x_scale=x_scale, data_only=data_only, fixed_var='omp')
+        self._set_ax(ax=ax, x_var=x_var, y_var=y_var, x=x, omp=omp,
+                     x_scale=x_scale, data_only=data_only)
 
         return fig
 
@@ -489,7 +492,7 @@ class ModelSet:
             ax.plot(x, y, marker=marker, linestyle=linestyle, label=label)
 
         self._set_ax(ax=ax, x_var='omp', y_var=y_var, x=self.omp, omp=mpi,
-                     x_scale=x_scale, data_only=data_only, fixed_var='mpi')
+                     x_scale=x_scale, data_only=data_only)
 
         return fig
 
@@ -524,7 +527,7 @@ class ModelSet:
         if x_map[x_var] is None:
             raise ValueError(f"must specify {name_map[x_var]} if x_var='{x_var}'")
 
-    def _set_ax(self, ax, x, x_var, y_var, omp, fixed_var,
+    def _set_ax(self, ax, x, x_var, y_var, omp,
                 x_scale=None, y_scale=None, data_only=False):
         """Set axis properties
 
@@ -535,11 +538,12 @@ class ModelSet:
         x_var : str
         y_var : str
         omp : int
-        fixed_var : str
         x_scale : str
         y_scale : str
         data_only : bool
         """
+        fixed_map = {'omp': 'mpi', 'mpi': 'omp'}
+
         if not data_only:
             self._set_ax_legend(ax=ax)
             self._set_ax_title(ax=ax)
@@ -547,7 +551,7 @@ class ModelSet:
             self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                                x_scale=x_scale, y_scale=y_scale)
             self._set_ax_xticks(ax=ax, x=x)
-            self._set_ax_text(ax=ax, omp=omp, fixed_var=fixed_var)
+            self._set_ax_text(ax=ax, omp=omp, fixed_var=fixed_map[x_var])
 
     def _set_ax_subplot(self, axes, x_var, y_var, row, col, omp,
                         x_scale, y_scale):
