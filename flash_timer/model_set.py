@@ -509,6 +509,21 @@ class ModelSet:
 
         return fig, ax
 
+    def _check_x_var(self, x_var, omp, mpi):
+        """Check for valid x_var and args
+
+        parameters
+        ----------
+        x_var : str
+        omp : int
+        mpi : int
+        """
+        x_map = {'omp': mpi, 'mpi': omp}
+        name_map = {'omp': 'mpi', 'mpi': 'omp'}
+
+        if x_map[x_var] is None:
+            raise ValueError(f"must specify {name_map[x_var]} if x_var='{x_var}'")
+
     def _set_ax(self, ax, x, x_var, y_var, omp, fixed_var,
                 x_scale=None, y_scale=None, data_only=False):
         """Set axis properties
