@@ -462,11 +462,6 @@ class ModelSet:
             max_x = max(max_x, x[-1])
             ax.plot(x, y, label=label, marker=marker, linestyle=linestyle)
 
-        if y_var == 'efficiency':
-            ax.plot([1, max_x], [100, 100], ls='--', color='black')
-        elif y_var == 'speedup':
-            ax.plot([1, max_x], [1, max_x], ls='--', color='black')
-
         self._set_ax(ax=ax, x_var=x_var, y_var=y_var, omp=omp,
                      x_scale=x_scale, data_only=data_only)
 
@@ -550,6 +545,7 @@ class ModelSet:
             self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                                x_scale=x_scale, y_scale=y_scale)
             self._set_ax_xticks(ax=ax)
+            self._set_ax_dashed(ax=ax, y_var=y_var)
             self._set_ax_text(ax=ax, omp=omp, fixed_var=fixed_map[x_var])
 
     def _set_ax_subplot(self, axes, x_var, y_var, row, col, omp,
@@ -589,6 +585,7 @@ class ModelSet:
         self._set_ax_scale(ax=ax, x_var=x_var, y_var=y_var,
                            x_scale=x_scale, y_scale=y_scale)
         self._set_ax_xticks(ax=ax)
+        self._set_ax_dashed(ax=ax, y_var=y_var)
 
     def _set_ax_legend(self, ax):
         """Set axis legend
@@ -651,6 +648,15 @@ class ModelSet:
         ax.xaxis.set_major_formatter(ScalarFormatter())
         ax.set_xticks(x)
         ax.tick_params(axis='x', which='minor', bottom=False)
+
+    def _set_ax_dashed(self, ax, y_var):
+        """Plot dashed line on axis
+        """
+        x = [1, self.max_cores]
+        if y_var == 'efficiency':
+            ax.plot(x, [100, 100], ls='--', color='black')
+        elif y_var == 'speedup':
+            ax.plot(x, x, ls='--', color='black')
 
     def _set_ax_scale(self, ax, x_var, y_var, x_scale, y_scale):
         """Set axis scales
