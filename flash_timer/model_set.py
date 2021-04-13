@@ -376,7 +376,7 @@ class ModelSet:
         return m.table
 
     def get_leaf_blocks(self, leaf, omp):
-        """Return array of total leaf blocks versus mpi or omp
+        """Return array of total leaf blocks versus mpi
 
         parameters
         ----------
@@ -388,6 +388,24 @@ class ModelSet:
 
         elif self.scaling_type == 'weak':
             return leaf * self.mpi[omp]
+
+    def get_leaf_array(self, x_var, omp, mpi):
+        """Return array of leaf blocks versus either mpi or omp
+
+        parameters
+        ----------
+        x_var : str
+        omp : int
+        mpi : int
+        """
+        self._check_x_var(x_var=x_var, omp=omp, mpi=mpi)
+        if x_var == 'mpi':
+            return self.mpi[omp]
+        elif x_var == 'omp':
+            # y =
+            x = y.coords[x_var]
+
+        pass
 
     # =======================================================
     #                      Plotting
