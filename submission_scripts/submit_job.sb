@@ -1,0 +1,42 @@
+#!/bin/bash --login
+########## SBATCH Lines for Resource Request ##########
+#SBATCH --time=0:20:00        # limit of wall clock time - how long the job will run (same as -t)
+#SBATCH --nodes=1             # number of different nodes - could be an exact number or a range of nodes (same as -N)
+#SBATCH --ntasks=128          # number of tasks - how many tasks (nodes) that you require (same as -n)
+#SBATCH --cpus-per-task=1     # number of CPUs (or cores) per task (same as -c)
+#SBATCH --mem-per-cpu=3G      # memory required per cpu
+#SBATCH --job-name=sod        # you can give your job a name for easier identification (same as -J)
+#SBATCH --mail-user=zacjohn@msu.edu
+#SBATCH --account=snaphu
+#SBATCH --qos=snaphu_large
+########## Command Lines to Run ##########
+
+# --------------------
+# Must parse:
+#	MODEL_SET
+#	LEAF_BLOCKS
+#	RANKS
+# --------------------
+module purge
+module load intel/2018b
+module load HDF5/1.10
+
+export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK}
+export OMP_STACKSIZE=64m
+MODEL=${MODEL_SET}_${OMP_NUM_THREADS}_${LEAF_BLOCKS}_${RANKS}
+cd ${SCRATCH}/BANG/runs/${MODEL_SET}/${MODEL}
+
+pwd
+echo "MODEL=${MODEL}"
+echo "OMP_NUM_THREADS=${OMP_NUM_THREADS}"
+echo "LEAF_BLOCKS=${LEAF_BLOCKS}"
+echo "RANKS=${RANKS}"
+echo "command: mpirun -np ${RANKS} ./flash4 -par_file flash_${LEAF_BLOCKS}.par"
+#echo "command: mpirun -np ${RANKS} -map-by ppr:1:l3cache:pe=4 --bind-to core ./flash4 -par_file flash_${LEAF_BLOCKS}.par"
+
+#srun -n ${SLURM_NTASKS} ./flash4 -par_file flash_${LEAF_BLOCKS}.par
+mpirun -np ${RANKS} ./flash4 -par_file flash_${LEAF_BLOCKS}.par
+#mpirun -np ${RANKS} -map-by ppr:1:l3cache:pe=4 --bind-to core ./flash4 -par_file flash_${LEAF_BLOCKS}.par
+
+scontrol show job ${SLURM_JOB_ID}     ### write job information
+
